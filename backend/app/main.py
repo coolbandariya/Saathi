@@ -11,7 +11,7 @@ from .telephony import HmacWebhookVerifier
 from .observability import get_correlation_id, set_correlation_id
 
 settings = get_settings()
-app = FastAPI(title="Saathi API", version="0.3.0")
+app = FastAPI(title="Saathi API", version="0.4.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[x.strip() for x in settings.cors_origins.split(",") if x.strip()],
@@ -40,8 +40,15 @@ def liveness() -> dict[str,str]:
     return {"status":"alive"}
 
 @app.get("/health/ready")
-def readiness() -> dict[str,str | bool]:
-    return {"status":"ready","demo_mode":settings.demo_mode}
+def readiness() -> dict[str,object]:
+    return {
+        "status": "ready",
+        "demo_mode": settings.demo_mode,
+        "provider_contracts": {
+            "telephony": bool(settings.telephony_webhook_secret),
+            "reasoning": bool(getattr(settings, "gemini_api_key", None) or getattr(settings, "openai_api_key", None)),
+        },
+    }
 
 @app.post("/api/v1/conversation", response_model=ConversationResponse)
 def conversation(payload: ConversationRequest, request: Request) -> ConversationResponse:
@@ -50,7 +57,8 @@ def conversation(payload: ConversationRequest, request: Request) -> Conversation
         raise HTTPException(status_code=429, detail="rate_limited")
     intent = classify_intent(payload.message)
     replies = {"scheme":"Bilkul. Main scheme ki jaankari aur required documents samajhne mein madad karunga.","farming":"Bilkul. Main mausam, mandi aur kheti se judi jaankari mein madad karunga.","document":"Document milne par main uska text samajhne aur zaroori action nikalne mein madad kar sakta hoon.","task":"Theek hai. Main is request ko follow-up task ke roop mein rakhne ke liye taiyar hoon.","human":"Theek hai. Main aapki request ko human volunteer ke liye escalate karne ke liye taiyar hoon.","general":"Namaste! Main Saathi hoon. Aap Hindi mein apni zaroorat bata sakte hain."}
-    return ConversationResponse(status="ok", reply=replies[intent], intent=intent, demo=settings.demo_mode, correlation_id=get_correlation_id())
+    escalated = intent == "human"
+    return ConversationResponse(status="ok", reply=replies[intent], intent=intent, demo=settings.demo_mode, correlation_id=get_correlation_id(), escalated=escalated, escalation_reason="explicit_human_request" if escalated else None, confidence=1.0 if escalated else 0.85)
 
 @app.post("/api/v1/agent", response_model=ConversationResponse)
 async def agent(payload: AgentRequest, request: Request) -> ConversationResponse:
@@ -61,7 +69,11 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
     source = None
     if result and result.source:
         source = {"name":result.source.name,"url":result.source.url,"retrieved_at":result.source.retrieved_at.isoformat(),"freshness_note":result.source.freshness_note}
-    return ConversationResponse(status="ok" if result is None or result.ok else "error", reply=reply, intent=intent, source=source, demo=settings.demo_mode, correlation_id=get_correlation_id())
+    failed = bool(result and not result.ok)
+    escalated = intent == "human" or failed
+    reason = "explicit_human_request" if intent == "human" else ("provider_failure" if failed else None)
+    confidence = 1.0 if intent == "human" else (0.55 if failed else 0.9)
+    return ConversationResponse(status="error" if failed else "ok", reply=reply, intent=intent, source=source, demo=settings.demo_mode, correlation_id=get_correlation_id(), escalated=escalated, escalation_reason=reason, confidence=confidence)
 
 @app.post("/api/v1/webhooks/telephony")
 async def telephony_webhook(request: Request, x_saathi_signature: str | None = Header(default=None)) -> dict[str,str | bool]:
