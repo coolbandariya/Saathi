@@ -102,7 +102,6 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
     if not limiter.allow(key):
         raise HTTPException(status_code=429, detail="rate_limited")
     started = perf_counter()
-    started = perf_counter()
     outcome = await orchestrator.handle(
         payload.message,
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
@@ -128,6 +127,7 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"agent:{key}"):
         raise HTTPException(status_code=429, detail="rate_limited")
+    started = perf_counter()
     outcome = await orchestrator.handle(
         payload.message,
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
