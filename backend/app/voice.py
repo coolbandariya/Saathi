@@ -21,6 +21,7 @@ class VoiceGateway:
             settings.sarvam_api_key if enabled else None,
             settings.sarvam_stt_endpoint,
             settings.sarvam_stt_model,
+            keyterms=["Sonipat", "सोनीपत", "Haryana", "हरियाणा", "Wheat", "गेहूं", "Mandi", "मंडी"],
         )
         self.tts = SafeProviderFactory.sarvam_tts(
             settings.sarvam_api_key if enabled else None,
