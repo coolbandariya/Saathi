@@ -58,3 +58,12 @@ def test_mandi_requires_entities_instead_of_using_demo_defaults():
     assert outcome.intent == "farming"
     assert outcome.result is None
     assert "फसल" in outcome.reply
+
+
+def test_farmer_scheme_uses_official_pmkisan_source():
+    outcome = asyncio.run(Orchestrator().handle("मुझे किसान योजना बताओ", AgentContext(household_id="h1")))
+    assert outcome.intent == "scheme"
+    assert outcome.result is not None and outcome.result.ok
+    assert outcome.result.source is not None
+    assert "pmkisan.gov.in" in outcome.result.source.url
+    assert outcome.tool_name == "get_pmkisan_info"
