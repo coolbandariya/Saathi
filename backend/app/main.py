@@ -154,10 +154,11 @@ async def voice_turn(
         raise HTTPException(status_code=422, detail="invalid_language")
     if household_id is not None and (len(household_id) < 1 or len(household_id) > 120):
         raise HTTPException(status_code=422, detail="invalid_household_id")
-    raw = await audio.read()
+    max_audio_bytes = 8_000_000
+    raw = await audio.read(max_audio_bytes + 1)
     if not raw:
         raise HTTPException(status_code=422, detail="empty_audio")
-    if len(raw) > 8_000_000:
+    if len(raw) > max_audio_bytes:
         raise HTTPException(status_code=413, detail="audio_too_large")
     try:
         turn = await voice_gateway.handle(raw, language=language, household_id=household_id)
