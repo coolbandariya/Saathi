@@ -30,6 +30,9 @@ class FakeClient:
     async def get(self, *args, **kwargs):
         return self.response
 
+    async def request(self, method, *args, **kwargs):
+        return self.response
+
     async def post(self, *args, **kwargs):
         return self.response
 
