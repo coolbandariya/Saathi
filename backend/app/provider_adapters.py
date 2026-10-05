@@ -45,11 +45,11 @@ class SarvamSpeechToTextProvider:
     async def transcribe(self, audio: bytes, *, language: str) -> str:
         language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            response = await client.post(
-                self.endpoint,
+            response = await _request_with_retry(
+                client, "POST", self.endpoint,
                 headers={"api-subscription-key": self.api_key},
                 files={"file": ("caller.webm", audio, "audio/webm")},
-                data={"model": self.model, "mode": self.mode, "language_code": language_code},
+                data={"model": self.model, "mode": "codemix", "language_code": language_code},
             )
             response.raise_for_status()
             payload = response.json()
