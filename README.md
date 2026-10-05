@@ -2,62 +2,56 @@
 
 **Your voice. Your language. Your companion.**
 
-Saathi is a voice-first, multilingual assistance platform designed to help people access useful services through simple conversations. The initial prototype focuses on Hindi voice interaction, scheme assistance, consent-based household continuity, and a responsive volunteer dashboard.
+Saathi is a voice-first, multilingual assistance platform designed to make useful information and service workflows accessible through simple conversations. The project is built around one principle: field-ready workflows over disconnected AI demos.
 
-## Project status
+## Current status
 
-Early development. Integrations and workflows are added incrementally; features are not considered live until implemented and tested.
+Foundation branch under review. The current build contains the responsive prototype UI, a typed FastAPI backend, deterministic intent-routing scaffolding, automated backend tests, CI, architecture/API documentation, and a staged implementation plan.
 
-## Repository structure
+Live voice, telephony, scheme, OCR, farming-data, memory, and volunteer integrations are not yet claimed as complete. Anything simulated in a demo must be labeled DEMO or SIMULATED.
 
-- `frontend/` — Next.js web experience
-- `backend/` — FastAPI services and agent orchestration
-- `supabase/` — database migrations and seed data
-- `docs/` — architecture, setup, and demo notes
+## Product direction
 
-## Local development
+1. Voice-first access through phone or browser.
+2. Hindi-first, with an adapter architecture for Indian languages and dialects.
+3. Specialist workflows for schemes, farming, documents, and tasks.
+4. Consent-based household memory and unfinished-task continuity.
+5. Proactive reminders/callbacks only after explicit outbound consent.
+6. Human volunteer fallback when automation is uncertain or requested.
+7. Source-backed factual answers; the LLM is not the source of truth.
 
-Requirements:
-- Node.js 20+
-- Python 3.11+
-- A Supabase project
-- An LLM API key (optional for the first UI milestone)
-- Bhashini credentials (optional until voice integration)
+## Repository
 
-### Frontend
+- frontend/ — Next.js + React interface
+- backend/ — FastAPI API and agent foundation
+- docs/ — architecture, API contracts, build plan, and demo contract
+- .github/workflows/ — backend test and frontend build gates
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Development
 
-### Backend
+Requirements: Node.js 20+, Python 3.11+.
 
-```bash
-cd backend
-python -m venv .venv
-# Windows PowerShell: .venv\\Scripts\\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+Frontend: cd frontend && npm install && npm run dev
 
-Copy `.env.example` to the relevant local environment file and fill in credentials. Never commit secrets.
+Backend: cd backend && python -m venv .venv && pip install -r requirements.txt && pytest -q && uvicorn app.main:app --reload
 
-## Safety and privacy
+Never commit .env files or secrets. Start from the provided .env.example files.
 
-- Obtain clear consent before storing household information or sending reminders.
-- Collect only information needed for the requested workflow.
-- Keep privileged keys server-side.
-- Treat scheme eligibility as a rules-based, source-backed check.
-- Do not use the prototype as a substitute for professional medical advice.
-- Use synthetic data during development and demos.
+## Engineering rules
 
-## Team
+- Do not hard-code provider secrets.
+- Do not fabricate eligibility, prices, weather, deadlines, or application status.
+- Keep external providers behind replaceable adapters.
+- Keep household data isolated with RLS.
+- Use synthetic data for development and demos.
+- Require explicit consent before storing memory or making outbound calls.
+- Treat healthcare as informational/navigation support in the MVP.
+- Do not merge failing required checks.
 
-Four-person team. Add each member's name and contribution before submission.
+## Build roadmap
 
-## Hackathon deliverables
+See docs/BUILD_PLAN.md for the milestone sequence and docs/ARCHITECTURE.md for the target runtime. GitHub Issues track the major workstreams.
 
-The project is being developed for JAI 2026 and Tech Eximius 2.0. Submission claims will reflect the functionality actually demonstrated in the submitted build.
+## Hackathon
+
+The project is being prepared for JAI 2026 and Tech Eximius 2.0. Submission claims will match functionality actually demonstrated by the submitted build.
