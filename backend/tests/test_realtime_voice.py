@@ -32,6 +32,7 @@ class FakeRealtimeSTT:
         self.connected_rate = None
         self.audio = []
         self.closed = False
+        self.ended = False
 
     async def connect(self, *, sample_rate):
         self.connected_rate = sample_rate
@@ -46,6 +47,9 @@ class FakeRealtimeSTT:
             return self.events.pop(0)
         await asyncio.sleep(60)
         return {"event": "session.end"}
+
+    async def end(self):
+        self.ended = True
 
     async def close(self):
         self.closed = True
@@ -90,6 +94,7 @@ def test_realtime_bridge_forwards_pcm_and_handles_barge_in():
         assert stt.audio == [pcm]
         assert calls[0] == "नमस्ते"
         assert any(json.loads(item).get("event") == "clear" for item in ws.sent)
+        assert stt.ended
         assert stt.closed
 
     asyncio.run(run())
