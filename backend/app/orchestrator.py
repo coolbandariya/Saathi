@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from .config import get_settings
 from .escalation import EscalationPolicy, EscalationReason
 from .http_tools import DataGovMandiTool, OpenMeteoWeatherTool
-from .intent import classify_intent
+from .intent import classify_intent, extract_farming_entities
 from .provenance import ToolResult
 from .schemas import Intent, LocationContext
 from .tools import DemoMandiTool, DemoWeatherTool
@@ -112,12 +112,23 @@ class Orchestrator:
                     confidence=0.55,
                 )
 
-            result = await self.mandi.price(commodity="गेहूं", state="Haryana", district="Sonipat")
+            entities = extract_farming_entities(message)
+            commodity = entities.commodity or "Wheat"
+            state = entities.state or "Haryana"
+            district = entities.district or "Sonipat"
+            result = await self.mandi.price(
+                commodity=commodity,
+                state=state,
+                district=district,
+                market=entities.market,
+            )
             if result.ok:
                 d = result.data
+                market = d.get("market") or entities.market or district
+                date = d.get("arrival_date") or "latest returned date"
                 return self._outcome(
                     intent=intent,
-                    reply=f"सरकारी बाजार डेटा के अनुसार {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है।",
+                    reply=f"सरकारी बाजार डेटा के अनुसार {market} में {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है (डेटा दिनांक {date})।",
                     result=result,
                 )
             return self._outcome(
