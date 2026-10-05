@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
@@ -209,9 +211,9 @@ export default function Dashboard() {
   return (
     <main className="command-shell">
       <nav className="command-nav">
-        <a href="/" className="command-brand">
+        <Link href="/" className="command-brand">
           <span><Mic2 size={17} /></span>saathi<span className="brand-dot">.</span>
-        </a>
+        </Link>
         <div className="command-nav-meta">
           <span className="connection"><i /> {apiOnline ? (apiReady ? "API ready" : "API online · providers gated") : "API offline"}</span>
           <span className="nav-divider" />
@@ -323,7 +325,7 @@ export default function Dashboard() {
                 <div className="answer-label"><span><Bot size={15} /> SAATHI RESPONSE</span><b>{result.intent}</b></div>
                 <p>{result.reply}</p>
                 {result.source ? (
-                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
+                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</Link>}</div></div>
                 ) : (
                   <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
                 )}
