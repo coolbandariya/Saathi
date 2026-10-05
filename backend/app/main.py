@@ -4,7 +4,7 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .schemas import AgentRequest, ConversationRequest, ConversationResponse, VoiceTurnResponse
+from .schemas import AgentRequest, ConversationRequest, ConversationResponse, LocationContext, VoiceTurnResponse
 from .orchestrator import AgentContext, Orchestrator
 from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
@@ -147,6 +147,9 @@ async def voice_turn(
     audio: UploadFile = File(...),
     language: str = Form("hi"),
     household_id: str | None = Form(None),
+    latitude: float | None = Form(None),
+    longitude: float | None = Form(None),
+    location_label: str | None = Form(None),
 ) -> VoiceTurnResponse:
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"voice:{key}"):
@@ -164,8 +167,13 @@ async def voice_turn(
         raise HTTPException(status_code=422, detail="empty_audio")
     if len(raw) > max_audio_bytes:
         raise HTTPException(status_code=413, detail="audio_too_large")
+    location = None
+    if latitude is not None or longitude is not None:
+        if latitude is None or longitude is None:
+            raise HTTPException(status_code=422, detail="location_requires_latitude_and_longitude")
+        location = LocationContext(latitude=latitude, longitude=longitude, label=location_label)
     try:
-        turn = await voice_gateway.handle(raw, language=language, household_id=household_id)
+        turn = await voice_gateway.handle(raw, language=language, household_id=household_id, location=location)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
