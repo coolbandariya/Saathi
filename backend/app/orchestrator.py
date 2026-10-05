@@ -140,7 +140,7 @@ class Orchestrator:
             )
             if result.ok:
                 d = result.data
-                market = d.get("market") or entities.market or district
+                market = d.get("market") or entities.market or entities.district or entities.state
                 date = d.get("arrival_date") or "latest returned date"
                 return self._outcome(
                     intent=intent,
