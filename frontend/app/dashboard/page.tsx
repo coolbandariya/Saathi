@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
@@ -52,6 +52,24 @@ export default function Dashboard() {
   const [showJudge, setShowJudge] = useState(true);
   const [judgeIndex, setJudgeIndex] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>("memory");
+  const [apiOnline, setApiOnline] = useState(false);
+  const [apiReady, setApiReady] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API}/health/ready`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("health check failed");
+        const body = await response.json();
+        setApiOnline(true);
+        setApiReady(body.status === "ready");
+      })
+      .catch(() => {
+        setApiOnline(false);
+        setApiReady(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   const trace = useMemo(() => [
     ["01", "Call / request received", true],
@@ -187,7 +205,7 @@ export default function Dashboard() {
           <span><Mic2 size={17} /></span>saathi<span className="brand-dot">.</span>
         </a>
         <div className="command-nav-meta">
-          <span className="connection"><i /> Demo systems ready</span>
+          <span className="connection"><i /> {apiOnline ? (apiReady ? "API ready" : "API online · providers gated") : "API offline"}</span>
           <span className="nav-divider" />
           <span className="operator"><UserRound size={14} /> Operator</span>
         </div>
@@ -201,7 +219,7 @@ export default function Dashboard() {
             <p>Inspect the complete caller journey: language, specialist agents, verified tools, consent-aware memory and human fallback.</p>
           </div>
           <div className="header-badges">
-            <span><Zap size={13} /> API ready</span>
+            <span><Zap size={13} /> {apiOnline ? (apiReady ? "API ready" : "API online") : "API offline"}</span>
             <span><ShieldCheck size={13} /> Consent-led</span>
             <span><Languages size={13} /> Hindi-first</span>
             {!showJudge && <button type="button" className="judge-toggle" onClick={() => setShowJudge(true)}>Show judge mode</button>}
@@ -214,7 +232,7 @@ export default function Dashboard() {
               <div className="panel-kicker">JUDGE MODE · GOLDEN DEMO</div>
               <div className="judge-title-row"><h2 id="judge-mode-title">One call. One visible chain.</h2><button type="button" className="judge-close" onClick={() => setShowJudge(false)} aria-label="Close judge mode"><X size={16} /></button></div>
               <p>Run the recommended 60-second story: missed call → Hindi → farming agent → verified mandi/weather tools → memory → human fallback.</p>
-              <button className="judge-start" onClick={startJudge}>
+              <button type="button" className="judge-start" onClick={startJudge}>
                 <Play size={15} fill="currentColor" /> Start golden demo
               </button>
             </div>
@@ -223,7 +241,7 @@ export default function Dashboard() {
                 const active = judgeIndex === index;
                 const done = judgeIndex > index;
                 return (
-                  <button className={`judge-step ${active ? "active" : ""} ${done ? "done" : ""}`} key={id} onClick={() => setJudgeIndex(index)}>
+                  <button type="button" className={`judge-step ${active ? "active" : ""} ${done ? "done" : ""}`} key={id} onClick={() => setJudgeIndex(index)} aria-current={active ? "step" : undefined}>
                     <span>{done ? <CheckCircle2 size={14} /> : <Icon size={14} />}</span>
                     <strong>{title}</strong>
                     <small>{sub}</small>
@@ -235,7 +253,7 @@ export default function Dashboard() {
               <div className="judge-live">
                 <span className="voice-pulse"><Mic2 size={17} /></span>
                 <div><strong>{judgeSteps[judgeIndex][1]}</strong><small>{judgeSteps[judgeIndex][2]}</small></div>
-                <button onClick={nextJudgeStep}>{judgeIndex === judgeSteps.length - 1 ? "Finish" : "Next"} <ArrowRight size={14} /></button>
+                <button type="button" onClick={nextJudgeStep}>{judgeIndex === judgeSteps.length - 1 ? "Finish" : "Next"} <ArrowRight size={14} /></button>
               </div>
             )}
           </section>
@@ -271,7 +289,7 @@ export default function Dashboard() {
 
             <div className="scenario-tabs" role="tablist" aria-label="Demo scenarios">
               {scenarios.map(({ id, label, icon: Icon }) => (
-                <button key={id} className={scenario === id ? "selected" : ""} onClick={() => selectScenario(id)}>
+                <button type="button" key={id} role="tab" aria-selected={scenario === id} className={scenario === id ? "selected" : ""} onClick={() => selectScenario(id)}>
                   <Icon size={14} />{label}
                 </button>
               ))}
@@ -343,12 +361,12 @@ export default function Dashboard() {
           <div className="context-title"><div><span className="panel-kicker">HOUSEHOLD MEMORY</span><h3 id="consent-title">Remember only with permission.</h3></div><ShieldCheck size={18} /></div>
           <p className="consent-intro">Saathi separates useful continuity from silent surveillance. Each future memory/reminder capability has its own consent boundary.</p>
           <div className="consent-options">
-            <button className={`consent-option ${memoryConsent ? "on" : ""}`} onClick={() => setMemoryConsent((value) => !value)}>
+            <button type="button" className={`consent-option ${memoryConsent ? "on" : ""}`} aria-pressed={memoryConsent} onClick={() => setMemoryConsent((value) => !value)}>
               <span className="toggle">{memoryConsent ? <CheckCircle2 size={14} /> : <X size={14} />}</span>
               <div><strong>Household memory</strong><small>{memoryConsent ? "Consented for this demo household" : "Not enabled"}</small></div>
               <ChevronDown size={14} />
             </button>
-            <button className={`consent-option ${reminderConsent ? "on" : ""}`} onClick={() => setReminderConsent((value) => !value)}>
+            <button type="button" className={`consent-option ${reminderConsent ? "on" : ""}`} aria-pressed={reminderConsent} onClick={() => setReminderConsent((value) => !value)}>
               <span className="toggle">{reminderConsent ? <CheckCircle2 size={14} /> : <X size={14} />}</span>
               <div><strong>Outbound reminders</strong><small>{reminderConsent ? "Consent recorded in demo state" : "Not enabled"}</small></div>
               <ChevronDown size={14} />
