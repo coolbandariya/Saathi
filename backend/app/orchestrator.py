@@ -26,6 +26,7 @@ class AgentOutcome:
     confidence: float
     escalated: bool
     escalation_reason: EscalationReason | None
+    tool_name: str | None = None
 
 
 class Orchestrator:
@@ -56,6 +57,7 @@ class Orchestrator:
         confidence: float = 0.9,
         explicit_human_request: bool = False,
         safety_boundary: bool = False,
+        tool_name: str | None = None,
     ) -> AgentOutcome:
         decision = self.escalation.evaluate(
             confidence=confidence,
@@ -70,6 +72,7 @@ class Orchestrator:
             confidence=decision.confidence,
             escalated=decision.escalate,
             escalation_reason=decision.reason,
+            tool_name=tool_name,
         )
 
     async def handle(self, message: str, context: AgentContext) -> AgentOutcome:
@@ -81,6 +84,7 @@ class Orchestrator:
                 reply="ठीक है। मैं आपकी बात volunteer सहायता के लिए भेजने की तैयारी कर रहा हूँ।",
                 confidence=1.0,
                 explicit_human_request=True,
+                tool_name="request_human",
             )
 
         if intent == "farming":
@@ -92,6 +96,7 @@ class Orchestrator:
                         intent=intent,
                         reply="मौसम बताने के लिए आपका शहर या स्थान चाहिए। कृपया अपना जिला या स्थान बताइए।",
                         confidence=0.72,
+                        tool_name="get_weather",
                     )
                 result = await self.weather.forecast(latitude=location.latitude, longitude=location.longitude)
                 if result.ok:
@@ -101,12 +106,14 @@ class Orchestrator:
                         intent=intent,
                         reply=f"उपलब्ध मौसम जानकारी के अनुसार तापमान {d['temperature_c']}°C है और अगले 24 घंटे में बारिश की अधिकतम संभावना {probability}% है।",
                         result=result,
+                        tool_name="get_weather",
                     )
                 return self._outcome(
                     intent=intent,
                     reply="अभी मौसम की जानकारी उपलब्ध नहीं है। मैं गलत जानकारी नहीं देना चाहता।",
                     result=result,
                     confidence=0.55,
+                    tool_name="get_weather",
                 )
 
             if self.mandi is None:
@@ -114,6 +121,7 @@ class Orchestrator:
                     intent=intent,
                     reply="मंडी का लाइव सरकारी स्रोत अभी configured नहीं है। मैं डेमो भाव को live भाव बताकर नहीं दिखाऊँगा।",
                     confidence=0.55,
+                    tool_name="get_mandi_price",
                 )
 
             entities = extract_farming_entities(message)
@@ -130,6 +138,7 @@ class Orchestrator:
                     intent=intent,
                     reply="मंडी का सही सरकारी भाव बताने के लिए " + " और ".join(missing) + " बताइए।",
                     confidence=0.78,
+                    tool_name="get_mandi_price",
                 )
 
             result = await self.mandi.price(
@@ -146,12 +155,14 @@ class Orchestrator:
                     intent=intent,
                     reply=f"सरकारी बाजार डेटा के अनुसार {market} में {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है (डेटा दिनांक {date})।",
                     result=result,
+                    tool_name="get_mandi_price",
                 )
             return self._outcome(
                 intent=intent,
                 reply="अभी सरकारी मंडी स्रोत से विश्वसनीय भाव नहीं मिला। मैं अनुमान नहीं दूँगा।",
                 result=result,
                 confidence=0.55,
+                tool_name="get_mandi_price",
             )
 
         replies = {
