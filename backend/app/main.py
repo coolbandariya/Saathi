@@ -97,6 +97,18 @@ def _source(outcome):
         }
     return None
 
+def _sources(outcome):
+    items = []
+    for result in outcome.results:
+        if result.source:
+            items.append({
+                "name": result.source.name,
+                "url": result.source.url,
+                "retrieved_at": result.source.retrieved_at.isoformat(),
+                "freshness_note": result.source.freshness_note,
+            })
+    return items
+
 
 @app.post("/api/v1/conversation", response_model=ConversationResponse)
 async def conversation(payload: ConversationRequest, request: Request) -> ConversationResponse:
@@ -114,6 +126,7 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
         reply=outcome.reply,
         intent=outcome.intent,
         source=_source(outcome),
+        sources=_sources(outcome),
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
         escalated=outcome.escalated,
