@@ -21,9 +21,11 @@ def _contains_keyword(text: str, keyword: str) -> bool:
 
 
 def _human_request_is_negated(text: str) -> bool:
+    # Only a negation after the human term is treated as refusal.
+    # This preserves phrases such as "agent नहीं, इंसान चाहिए".
     for match in re.finditer(_HUMAN_TERMS, text):
-        window = text[max(0, match.start() - 32):min(len(text), match.end() + 32)]
-        if _HINDI_NEGATION.search(window):
+        after = text[match.end():min(len(text), match.end() + 32)]
+        if _HINDI_NEGATION.search(after):
             return True
     return False
 
