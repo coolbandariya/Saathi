@@ -195,7 +195,6 @@ export default function Dashboard() {
             </div>
 
             <div className="scenario-tabs" role="tablist" aria-label="Demo scenarios">
-              {scenarios.map(([item]) => null)}
               {scenarios.map(({ id, label, icon: Icon }) => (
                 <button key={id} className={scenario === id ? "selected" : ""} onClick={() => selectScenario(id)}>
                   <Icon size={14} />{label}
