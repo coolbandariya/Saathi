@@ -9,6 +9,8 @@ def test_agent_endpoint_returns_provenance():
     assert data['intent']=='farming'
     assert data['source']['name']=='Saathi Demo Mandi'
     assert data['demo'] is True
+    assert data['tool_name'] == 'get_mandi_price'
+    assert isinstance(data['latency_ms'], (int, float)) and data['latency_ms'] >= 0
 
 def test_liveness():
     assert TestClient(app).get('/health/live').json()['status']=='alive'
