@@ -3,6 +3,12 @@
 import { motion } from "motion/react";
 import { ArrowRight, ArrowUpRight, AudioLines, Check, CheckCircle2, Database, Languages, Mic2, PhoneCall, ShieldCheck, Sparkles, Wheat, Zap } from "lucide-react";
 
+const scenarios = [
+  [Wheat,"Mandi bhav","“गेहूं ka mandi bhav aur kal baarish?”","Extract place + commodity, query specialist sources, then answer with provenance."],
+  [ShieldCheck,"Government schemes","“Kisan yojana ke baare mein batao”","Guide the user without pretending an eligibility decision has been verified."],
+  [PhoneCall,"Human fallback","“Mujhe kisi insaan se baat karni hai”","Escalate immediately instead of forcing automation past the user’s request."],
+] as const;
+
 const proof = [
   [Languages, "Hindi / Hinglish", "Natural code-mixed speech in a voice-first flow."],
   [Database, "Verified tools", "Government market data and weather stay outside the model."],
@@ -40,17 +46,13 @@ export default function Home() {
     <section className="difference wrap">
       <div className="section-heading"><div className="eyebrow"><span className="eyebrow-line"/>THE DIFFERENCE</div><h2>Most assistants answer.<br/><em>Saathi verifies.</em></h2><p>The model can decide what to ask and which declared tool to use. It does not get to decide what is true.</p></div>
       <div className="scenario-grid">
-        {[
-          [Wheat,"Mandi bhav","“गेहूं ka mandi bhav aur kal baarish?”","Extract place + commodity, query specialist sources, then answer with provenance."],
-          [ShieldCheck,"Government schemes","“Kisan yojana ke baare mein batao”","Guide the user without pretending an eligibility decision has been verified."],
-          [PhoneCall,"Human fallback","“Mujhe kisi insaan se baat karni hai”","Escalate immediately instead of forcing automation past the user’s request."],
-        ].map(([Icon,label,prompt,text],i)=><motion.article className="scenario-card" key={label as string} initial={{opacity:0,y:15}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*.08}}><span className="scenario-number">0{i+1}</span><div className="scenario-icon"><Icon size={19}/></div><span className="scenario-label">{label}</span><h3>{prompt}</h3><p>{text}</p></motion.article>)}
+        {scenarios.map(([Icon,label,prompt,text],i)=><motion.article className="scenario-card" key={label as string} initial={{opacity:0,y:15}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*.08}}><span className="scenario-number">0{i+1}</span><div className="scenario-icon"><Icon size={19}/></div><span className="scenario-label">{label}</span><h3>{prompt}</h3><p>{text}</p></motion.article>)}
       </div>
     </section>
 
     <section className="architecture"><div className="wrap architecture-inner">
       <div className="architecture-copy"><div className="eyebrow"><span className="eyebrow-line"/>BUILT TO BE INSPECTED</div><h2>Agentic where it matters.<br/><em>Deterministic where it counts.</em></h2><p>Speech becomes structured intent. Intent selects a declared capability. The capability returns evidence. Saathi speaks only from that evidence.</p><a className="button button-light" href="/dashboard">Open the operator view <ArrowUpRight size={16}/></a></div>
-      <div className="architecture-flow">{[[Mic2,"Speech","Sarvam STT"],[Sparkles,"Intent","Hindi + entities"],[Database,"Tools","OGD + weather"],[ShieldCheck,"Evidence","Provenance"],[AudioLines,"Voice","Sarvam TTS"]].map(([Icon,title,sub],i)=><div className="arch-node" key={title as string}><div className="arch-icon"><Icon size={18}/></div><strong>{title}</strong><small>{sub}</small>{i<4&&<ArrowRight className="arch-arrow" size={15}/>}</div>)}</div>
+      <div className="architecture-flow">{([[Mic2,"Speech","Sarvam STT"],[Sparkles,"Intent","Hindi + entities"],[Database,"Tools","OGD + weather"],[ShieldCheck,"Evidence","Provenance"],[AudioLines,"Voice","Sarvam TTS"]] as const).map(([Icon,title,sub],i)=><div className="arch-node" key={title as string}><div className="arch-icon"><Icon size={18}/></div><strong>{title}</strong><small>{sub}</small>{i<4&&<ArrowRight className="arch-arrow" size={15}/>}</div>)}</div>
     </div></section>
 
     <section className="final-cta wrap"><div><span className="eyebrow"><span className="eyebrow-line"/>READY FOR A REAL QUESTION?</span><h2>Bring Saathi a messy sentence.<br/><em>We’ll show the chain.</em></h2></div><a className="button button-dark" href="/dashboard">Enter the demo <ArrowUpRight size={17}/></a></section>
