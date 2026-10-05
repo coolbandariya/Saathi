@@ -154,3 +154,82 @@ class SafeProviderFactory:
     @staticmethod
     def sarvam_tts(api_key: str | None, endpoint: str, model: str, speaker: str) -> TextToSpeechProvider | None:
         return SarvamTextToSpeechProvider(api_key, endpoint, model, speaker) if api_key else None
+
+
+from dataclasses import dataclass
+import json
+
+@dataclass(frozen=True)
+class GeminiToolCall:
+    name: str
+    arguments: dict
+    call_id: str
+
+
+class GeminiToolRouter:
+    """Stateless Gemini Interactions function-calling boundary.
+
+    The router only chooses a declared tool. Tool execution remains in Saathi,
+    so factual authority stays with our adapters.
+    """
+
+    TOOLS = [
+        {
+            "type": "function",
+            "name": "get_weather",
+            "description": "Retrieve verified weather for caller context.",
+            "parameters": {
+                "type": "object",
+                "properties": {"latitude": {"type": "number"}, "longitude": {"type": "number"}},
+                "required": ["latitude", "longitude"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "get_mandi_price",
+            "description": "Retrieve verified daily mandi price data.",
+            "parameters": {
+                "type": "object",
+                "properties": {"commodity": {"type": "string"}, "state": {"type": "string"}, "district": {"type": "string"}},
+                "required": ["commodity", "state"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "request_human",
+            "description": "Escalate when the caller asks for a person or automation is unsafe/uncertain.",
+            "parameters": {"type": "object", "properties": {"reason": {"type": "string"}}, "required": ["reason"]},
+        },
+    ]
+
+    def __init__(self, api_key: str, model: str = "gemini-3.8-flash", timeout_seconds: float = 15.0) -> None:
+        self.api_key, self.model, self.timeout_seconds = api_key, model, timeout_seconds
+
+    async def choose(self, user_text: str) -> GeminiToolCall | None:
+        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            response = await _request_with_retry(
+                client, "POST",
+                "https://generativelanguage.googleapis.com/v1beta/interactions",
+                headers={"x-goog-api-key": self.api_key, "Content-Type": "application/json"},
+                json={
+                    "model": self.model,
+                    "store": False,
+                    "input": user_text,
+                    "tools": self.TOOLS,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+        for step in payload.get("steps", []):
+            if step.get("type") != "function_call":
+                continue
+            arguments = step.get("arguments") or {}
+            if isinstance(arguments, str):
+                arguments = json.loads(arguments)
+            return GeminiToolCall(
+                name=str(step.get("name") or ""),
+                arguments=arguments,
+                call_id=str(step.get("id") or ""),
+            )
+        return None
