@@ -53,8 +53,6 @@ export default function Dashboard() {
   const [judgeIndex, setJudgeIndex] = useState(-1);
   const [expanded, setExpanded] = useState<string | null>("memory");
 
-  const selectedScenario = scenarios.find((item) => item.id === scenario) ?? scenarios[0];
-
   const trace = useMemo(() => [
     ["01", "Call / request received", true],
     ["02", "Language + intent detected", true],
@@ -151,7 +149,7 @@ export default function Dashboard() {
       });
       if (!response.ok) throw new Error(`Agent request failed: ${response.status}`);
       setResult(await response.json());
-      setVoiceState("speaking");
+      setVoiceState("idle");
     } catch {
       setResult({
         reply: "Backend se connection nahi ho paaya. Saathi live result invent nahi karega — provider status check karein.",
@@ -210,10 +208,10 @@ export default function Dashboard() {
         </header>
 
         {showJudge && (
-          <section className="judge-panel">
+          <section className="judge-panel" aria-labelledby="judge-mode-title">
             <div className="judge-copy">
               <div className="panel-kicker">JUDGE MODE · GOLDEN DEMO</div>
-              <h2>One call. One visible chain.</h2>
+              <div className="judge-title-row"><h2 id="judge-mode-title">One call. One visible chain.</h2><button type="button" className="judge-close" onClick={() => setShowJudge(false)} aria-label="Close judge mode"><X size={16} /></button></div>
               <p>Run the recommended 60-second story: missed call → Hindi → farming agent → verified mandi/weather tools → memory → human fallback.</p>
               <button className="judge-start" onClick={startJudge}>
                 <Play size={15} fill="currentColor" /> Start golden demo
@@ -281,15 +279,15 @@ export default function Dashboard() {
             <textarea value={message} onChange={(event) => setMessage(event.target.value)} aria-label="Caller request" />
 
             <div className="voice-controls">
-              <button className={`voice-button ${voiceState === "listening" ? "active" : ""}`} onClick={toggleVoice} aria-label="Toggle microphone" disabled={loading || voiceState === "speaking"}>
+              <button type="button" className={`voice-button ${voiceState === "listening" ? "active" : ""}`} onClick={toggleVoice} aria-label="Toggle microphone" disabled={loading || voiceState === "speaking"}>
                 <Mic2 size={18} /> {voiceState === "listening" ? "Stop recording" : "Start voice"}
               </button>
               <span><Volume2 size={13} /> Real mic → STT → agent → TTS when the voice provider is configured</span>
             </div>
 
-            {voiceError && <div className="voice-error" role="status">{voiceError}</div>}
+            {voiceError && <div className="voice-error" role="alert" aria-live="assertive">{voiceError}</div>}
 
-            <button className="run-button" onClick={run} disabled={loading || !message.trim()}>
+            <button type="button" className="run-button" onClick={run} disabled={loading || !message.trim()}>
               <Bot size={18} />{loading ? "Saathi is thinking…" : "Run this conversation"}<ArrowUpRight size={17} />
             </button>
 
@@ -340,8 +338,8 @@ export default function Dashboard() {
           </article>
         </section>
 
-        <section className="consent-card">
-          <div className="context-title"><div><span className="panel-kicker">HOUSEHOLD MEMORY</span><h3>Remember only with permission.</h3></div><ShieldCheck size={18} /></div>
+        <section className="consent-card" aria-labelledby="consent-title">
+          <div className="context-title"><div><span className="panel-kicker">HOUSEHOLD MEMORY</span><h3 id="consent-title">Remember only with permission.</h3></div><ShieldCheck size={18} /></div>
           <p className="consent-intro">Saathi separates useful continuity from silent surveillance. Each future memory/reminder capability has its own consent boundary.</p>
           <div className="consent-options">
             <button className={`consent-option ${memoryConsent ? "on" : ""}`} onClick={() => setMemoryConsent((value) => !value)}>
@@ -358,9 +356,9 @@ export default function Dashboard() {
           <div className="consent-note"><ShieldCheck size={14} /> In production, consent, opt-out, quiet hours and deletion must be persisted server-side.</div>
         </section>
 
-        <section className="fallback-card">
+        <section className="fallback-card" aria-labelledby="fallback-title">
           <div className="fallback-icon"><UserRound size={22} /></div>
-          <div className="fallback-copy"><span className="panel-kicker">HUMAN FALLBACK</span><h3>When confidence drops, hand the call to a person.</h3><p>Saathi can package the conversation context for a volunteer instead of forcing the model to answer beyond its safety or confidence boundary.</p></div>
+          <div className="fallback-copy"><span className="panel-kicker">HUMAN FALLBACK</span><h3 id="fallback-title">When confidence drops, hand the call to a person.</h3><p>Saathi can package the conversation context for a volunteer instead of forcing the model to answer beyond its safety or confidence boundary.</p></div>
           <div className="fallback-status"><span><i /> Ready</span><small>Policy threshold · 0.65</small></div>
         </section>
 
@@ -370,7 +368,7 @@ export default function Dashboard() {
           ))}
         </section>
 
-        <footer className="command-footer">
+        <footer className="command-footer" aria-label="Saathi footer">
           <span>SAATHI · VOICE-FIRST ACCESS</span><span>Prototype control room · 2026</span>
           <a href="/"><ArrowLeft size={14} /> Back to product</a>
         </footer>
