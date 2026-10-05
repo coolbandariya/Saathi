@@ -8,7 +8,7 @@ from .http_tools import DataGovMandiTool, OpenMeteoWeatherTool
 from .intent import classify_intent, extract_farming_entities
 from .provenance import ToolResult
 from .schemas import Intent, LocationContext
-from .tools import DemoMandiTool, DemoWeatherTool
+from .tools import DemoMandiTool, DemoWeatherTool, PMKisanSchemeTool
 
 
 @dataclass(frozen=True)
@@ -47,6 +47,7 @@ class Orchestrator:
                 else None
             )
         self.escalation = EscalationPolicy()
+        self.scheme = PMKisanSchemeTool()
 
     def _outcome(
         self,
@@ -163,6 +164,16 @@ class Orchestrator:
                 result=result,
                 confidence=0.55,
                 tool_name="get_mandi_price",
+            )
+
+        if intent == "scheme" and any(x in message.casefold() for x in ("किसान", "pm-kisan", "pm kisan", "किसान योजना")):
+            result = await self.scheme.explain()
+            return self._outcome(
+                intent=intent,
+                reply="आधिकारिक PM-KISAN जानकारी के अनुसार पात्र landholding farmer families के लिए सालाना ₹6,000 तीन बराबर किस्तों में दिए जाते हैं और registered farmers के लिए eKYC mandatory है। अंतिम eligibility सरकार की scheme guidelines और verification पर निर्भर है।",
+                result=result,
+                confidence=0.96,
+                tool_name="get_pmkisan_info",
             )
 
         replies = {
