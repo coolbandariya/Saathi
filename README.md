@@ -6,9 +6,9 @@ Saathi is a voice-first, multilingual assistance platform designed to make usefu
 
 ## Current status
 
-Foundation branch under review. The current build contains the responsive prototype UI, a typed FastAPI backend, deterministic intent-routing scaffolding, automated backend tests, CI, architecture/API documentation, and a staged implementation plan.
+Non-Supabase completion branch. The current build contains the responsive browser demo, typed FastAPI contracts, deterministic orchestration, provider ports, Gemini adapter, consent/task policy, factual weather/mandi/scheme boundaries, document and volunteer workflow primitives, Exotel stream contracts, automated tests, CI, and architecture documentation.
 
-Live voice, telephony, scheme, OCR, farming-data, memory, and volunteer integrations are not yet claimed as complete. Anything simulated in a demo must be labeled DEMO or SIMULATED.
+Supabase persistence and live speech/telephony/OCR credentials are intentionally not connected yet. Anything simulated in a demo is labeled DEMO or SIMULATED.
 
 ## Product direction
 
@@ -29,7 +29,7 @@ Live voice, telephony, scheme, OCR, farming-data, memory, and volunteer integrat
 
 ## Development
 
-Requirements: Node.js 20+, Python 3.11+.
+Requirements: Node.js 24+, Python 3.11+.
 
 Frontend: cd frontend && npm install && npm run dev
 
