@@ -64,4 +64,3 @@ The project is being prepared for JAI 2026 and Tech Eximius 2.0. Submission clai
 
 The current product branch also includes deterministic intent boundaries, policy-backed escalation decisions, optional caller-provided field location, degraded readiness reporting when provider contracts are absent, and webhook idempotency using a deterministic provider-event/body fingerprint. The webhook store is intentionally in-memory for the demo; production persistence still requires a durable repository such as Supabase.
 \n\n## Real voice and data configuration\n\nSee docs/VOICE_RUNTIME.md, docs/REAL_DATA.md, and docs/JAI_SUBMISSION_CHECKLIST.md before recording a submission demo.\n
-<!-- release-gate: real-data-loop -->
