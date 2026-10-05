@@ -112,7 +112,8 @@ class ExotelTelephonyProvider:
             raise ValueError("Exotel Voice AI StreamUrl must use wss://")
         url = f"https://{self.host}/v1/Accounts/{self.account_sid}/Calls/connect"
         data = {
-            "From": to,
+            "From": self.caller_id,
+            "To": to,
             "CallerId": self.caller_id,
             "StreamUrl": stream_url,
             "StreamType": "bidirectional",
