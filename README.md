@@ -6,9 +6,11 @@ Saathi is a voice-first, multilingual assistance platform designed to make usefu
 
 ## Current status
 
-Foundation branch under review. The current build contains the responsive prototype UI, a typed FastAPI backend, deterministic intent-routing scaffolding, automated backend tests, CI, architecture/API documentation, and a staged implementation plan.
+The active implementation branch now contains the responsive prototype UI, typed FastAPI backend, deterministic routing, agent-orchestration foundation, source-provenance contracts, a live Open-Meteo adapter, telephony/webhook contracts, rate-limited API endpoints, operator control room, automated tests, CI configuration, and production/demo gates.
 
-Live voice, telephony, scheme, OCR, farming-data, memory, and volunteer integrations are not yet claimed as complete. Anything simulated in a demo must be labeled DEMO or SIMULATED.
+The current operator demo uses clearly labelled simulated mandi data. Live Exotel, Bhashini, Supabase persistence, government scheme APIs, OCR and live mandi integration remain provider-gated work and are not falsely claimed as complete.
+
+**Operator demo:** run the frontend and open /dashboard.
 
 ## Product direction
 
@@ -22,9 +24,9 @@ Live voice, telephony, scheme, OCR, farming-data, memory, and volunteer integrat
 
 ## Repository
 
-- frontend/ — Next.js + React interface
-- backend/ — FastAPI API and agent foundation
-- docs/ — architecture, API contracts, build plan, and demo contract
+- frontend/ — Next.js + React interface and operator control room
+- backend/ — FastAPI API, agent orchestration and provider boundaries
+- docs/ — architecture, API contracts, build plan, voice contract, evaluation and release gates
 - .github/workflows/ — backend test and frontend build gates
 
 ## Development
@@ -47,10 +49,12 @@ Never commit .env files or secrets. Start from the provided .env.example files.
 - Require explicit consent before storing memory or making outbound calls.
 - Treat healthcare as informational/navigation support in the MVP.
 - Do not merge failing required checks.
+- Every factual tool result must carry provenance and retrieval time.
+- Demo/simulated data must be explicitly labelled.
 
 ## Build roadmap
 
-See docs/BUILD_PLAN.md for the milestone sequence and docs/ARCHITECTURE.md for the target runtime. GitHub Issues track the major workstreams.
+See docs/BUILD_PLAN.md for the milestone sequence and docs/ARCHITECTURE.md for the target runtime. GitHub Issues #11–#25 track the remaining implementation work.
 
 ## Hackathon
 
