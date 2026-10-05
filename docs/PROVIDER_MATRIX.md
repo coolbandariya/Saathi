@@ -1,16 +1,15 @@
 # Provider Matrix
 
-Providers are replaceable adapters. The MVP should not hard-wire business logic to one vendor.
+| Capability | Implemented now | Production target | Safety rule |
+|---|---|---|---|
+| LLM | Demo + Gemini adapter | Gemini/OpenAI | Tool calls only for factual/action work |
+| STT | Protocol + deterministic demo | Bhashini/Whisper adapter | Confidence + language metadata |
+| TTS | Protocol + deterministic demo | Bhashini TTS | Never log audio contents |
+| Telephony | Exotel protocol/client | Exotel AgentStream | WSS, signature/replay protection |
+| Weather | Open-Meteo adapter | Open-Meteo/IMD adapter | Coordinates + timestamp required |
+| Mandi | Data.gov.in configurable adapter | Official agriculture data resource | Commodity/market validation + source timestamp |
+| Schemes | myScheme-backed PM-USP evaluator | Versioned catalogue ingestion | Deterministic eligibility |
+| OCR | Upload/review boundary | Bhashini/compatible OCR | Confidence threshold + human review |
+| Database | In-memory test repository | Supabase/Postgres | RLS + consent + audit |
 
-| Capability | Primary direction | Fallback/demo |
-|---|---|---|
-| LLM | Gemini/OpenAI adapter | deterministic demo responder |
-| STT | Bhashini / compatible speech adapter | browser/demo transcript |
-| TTS | Bhashini / compatible speech adapter | browser speech or text |
-| Telephony | Exotel or validated Indian provider | browser call simulation |
-| Database | Supabase/Postgres | local deterministic fixtures |
-| Weather | Open-Meteo or validated source | timestamped demo fixture |
-| Mandi | official/validated agriculture source | timestamped demo fixture |
-| OCR | Bhashini/compatible OCR | fixture OCR in demo |
-
-Every factual provider response must carry source/timestamp metadata internally so stale or missing data can be handled explicitly.
+External providers remain replaceable and credentials stay server-side.
