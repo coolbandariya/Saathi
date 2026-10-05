@@ -11,8 +11,9 @@ from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
 from .observability import get_correlation_id, set_correlation_id
 from .telephony_voice import SarvamTelephonySpeechProvider
+from .provider_adapters import SarvamRealtimeSTTSession, SarvamRealtimeTTSProvider
 from .voice import VoiceGateway
-from .voice_bridge import run_exotel_session
+from .voice_bridge import run_exotel_realtime_session, run_exotel_session
 from .webhook_events import InMemoryWebhookEventStore, derive_event_id
 
 
@@ -76,6 +77,7 @@ def readiness() -> dict[str, object]:
         "provider_contracts": {
             "core_agent": True,
             "telephony": telephony,
+            "telephony_realtime": bool(telephony and settings.sarvam_realtime_stt_enabled and settings.sarvam_api_key),
             "reasoning": reasoning,
             "mandi": mandi,
             "speech": speech,
@@ -213,9 +215,9 @@ async def voice_turn(
 async def telephony_stream(websocket: WebSocket) -> None:
     """Exotel AgentStream endpoint.
 
-    The endpoint is intentionally provider-gated. It accepts a real Exotel
-    websocket only when the Sarvam speech provider is configured. The current
-    bridge is bounded-turn, so this is executable but not advertised as realtime.
+    With SARVAM_REALTIME_STT_ENABLED=true this uses Sarvam Realtime STT,
+    streaming TTS, server VAD and cancellation-aware barge-in. Otherwise it
+    retains the bounded-turn adapter as a safe fallback.
     """
     if not settings.exotel_stream_url or not settings.sarvam_api_key:
         await websocket.close(code=1013, reason="telephony_provider_not_configured")
@@ -223,6 +225,38 @@ async def telephony_stream(websocket: WebSocket) -> None:
 
     await websocket.accept()
     try:
+        if settings.sarvam_realtime_stt_enabled:
+            realtime_stt = SarvamRealtimeSTTSession(
+                api_key=settings.sarvam_api_key,
+                endpoint=settings.sarvam_realtime_stt_endpoint,
+                model=settings.sarvam_stt_model,
+                stream_type=settings.sarvam_realtime_stream_type,
+                keyterms=["Sonipat", "सोनीपत", "Haryana", "हरियाणा", "Wheat", "गेहूं", "mandi", "मंडी"],
+            )
+            realtime_tts = SarvamRealtimeTTSProvider(
+                api_key=settings.sarvam_api_key,
+                endpoint=settings.sarvam_tts_stream_endpoint,
+                model=settings.sarvam_tts_model,
+                speaker=settings.sarvam_tts_speaker,
+                sample_rate=settings.sarvam_tts_stream_sample_rate,
+            )
+
+            async def respond(text: str) -> str:
+                outcome = await orchestrator.handle(text, AgentContext(household_id=None, language="hi"))
+                return outcome.reply
+
+            async def synthesize_stream(text: str, sample_rate: int):
+                async for chunk in realtime_tts.stream(text, language="hi-IN", sample_rate=sample_rate):
+                    yield chunk
+
+            await run_exotel_realtime_session(
+                websocket,
+                stt_session=realtime_stt,
+                respond=respond,
+                synthesize_stream=synthesize_stream,
+            )
+            return
+
         speech = SarvamTelephonySpeechProvider(settings)
 
         async def transcribe(pcm: bytes, sample_rate: int) -> str:
