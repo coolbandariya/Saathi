@@ -36,7 +36,7 @@ export default function Home() {
 
       <motion.div className="hero-stage" initial={{opacity:0,scale:.97}} animate={{opacity:1,scale:1}} transition={{duration:.7,delay:.12}}>
         <div className="stage-top"><div><span className="tiny-label">SAATHI · GOLDEN PATH</span><div className="card-title">One request. A visible chain.</div></div><span className="live-pill"><i/> DEMO READY</span></div>
-        <div className="voice-scene"><div className="voice-orb"><AudioLines size={31}/></div><div className="voice-copy"><span>CALLER SAYS</span><strong>“Kal Sonipat mein गेहूं ka mandi bhav kya hai? Baarish ka chance bhi batao.”</strong></div></div>
+        <div className="voice-scene"><div className="voice-orb"><AudioLines size={31}/></div><div className="voice-copy"><span>CALLER SAYS</span><strong>“Sonipat mein गेहूं ka mandi bhav kya hai? Agle 24 ghante mein baarish ka chance bhi batao.”</strong></div></div>
         <div className="mini-trace">{steps.map(([num,title,sub],i)=><div className="mini-step" key={num}><span>{num}</span><strong>{title}</strong><small>{sub}</small>{i<3&&<ArrowRight size={13}/>}</div>)}</div>
         <div className="verified-banner"><CheckCircle2 size={17}/><div><strong>Answer only after verification</strong><span>AGMARKNET · Open-Meteo · retrieval time + provenance</span></div><Zap size={15}/></div>
       </motion.div>
