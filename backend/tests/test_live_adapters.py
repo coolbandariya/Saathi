@@ -125,3 +125,18 @@ def test_exotel_voice_ai_call_sends_destination_and_stream(monkeypatch):
     assert captured["data"]["To"] == "+919999999999"
     assert captured["data"]["StreamUrl"] == "wss://voice.example.test/stream"
     assert captured["data"]["StreamType"] == "bidirectional"
+
+def test_gemini_tool_router_reads_function_call_steps(monkeypatch):
+    class GeminiResponse(FakeResponse):
+        def __init__(self):
+            super().__init__({"steps": [{"type": "function_call", "id": "fc-1", "name": "get_mandi_price", "arguments": {"commodity": "Wheat", "state": "Haryana"}}]})
+
+    class GeminiClient(FakeClient):
+        response = GeminiResponse()
+
+    monkeypatch.setattr(provider_adapters.httpx, "AsyncClient", GeminiClient)
+    call = asyncio.run(provider_adapters.GeminiToolRouter("key").choose("Sonipat mandi wheat price"))
+    assert call is not None
+    assert call.name == "get_mandi_price"
+    assert call.arguments["commodity"] == "Wheat"
+    assert call.call_id == "fc-1"
