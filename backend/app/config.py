@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     sarvam_tts_model: str = "bulbul:v3"
     sarvam_tts_speaker: str = "shubh"
     mandi_api_key: str | None = None
-    mandi_resource_id: str | None = None
+    mandi_resource_id: str | None = "9ef84268-d588-465a-a308-a864a43d0070"
     mandi_api_base: str = "https://api.data.gov.in/resource"
     exotel_api_key: str | None = None
     exotel_api_token: str | None = None
