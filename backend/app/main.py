@@ -51,7 +51,7 @@ def liveness() -> dict[str, str]:
 
 @app.get("/health/ready")
 def readiness() -> dict[str, object]:
-    telephony = bool(settings.telephony_webhook_secret)
+    telephony = bool(settings.telephony_webhook_secret and settings.exotel_api_key and settings.exotel_api_token and settings.exotel_account_sid and settings.exotel_virtual_number and settings.exotel_stream_url)
     reasoning = bool(getattr(settings, "gemini_api_key", None) or getattr(settings, "openai_api_key", None))
     mandi = bool(settings.mandi_api_key and settings.mandi_resource_id)
     speech = bool(
