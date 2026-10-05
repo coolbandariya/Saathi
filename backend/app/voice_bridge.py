@@ -151,6 +151,7 @@ async def run_exotel_realtime_session(
     sample_rate = 8000
     playback_task: asyncio.Task | None = None
     response_tasks: set[asyncio.Task] = set()
+    reader_task: asyncio.Task | None = None
 
     async def cancel_playback() -> None:
         nonlocal playback_task
@@ -236,6 +237,9 @@ async def run_exotel_realtime_session(
         if stream_sid:
             await stt_session.close()
     finally:
+        if reader_task and not reader_task.done():
+            reader_task.cancel()
+            await asyncio.gather(reader_task, return_exceptions=True)
         await cancel_playback()
         for task in list(response_tasks):
             task.cancel()
