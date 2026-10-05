@@ -28,7 +28,7 @@ The provider key is server-side only. Never put SARVAM_API_KEY in NEXT_PUBLIC_* 
 
 ## Phone path
 
-The current Exotel adapter supports outbound call initiation and signed webhook handling. A production phone conversation still needs Exotel's bidirectional Voice AI/WebSocket path wired to the same voice gateway.
+The Exotel adapter now includes the bidirectional Connect Voice AI call contract (`StreamUrl` + `StreamType=bidirectional`). The actual WebSocket media endpoint is still a deployment step: it needs a public `wss://` URL and must relay Exotel's 8/16/24 kHz linear16 PCM frames into the chosen realtime STT/TTS path.
 
 Do not describe phone streaming as live until an actual call has completed the complete audio round trip.
 
