@@ -63,3 +63,4 @@ button,a{touch-action:manipulation}
 @media(prefers-reduced-motion:reduce){
   .orb,.orb-ring,.caller-avatar,.voice-pulse{animation:none!important}
 }
+.judge-toggle{border:1px solid #d8d8ce;background:#fffefa;color:#183d32;border-radius:999px;padding:8px 11px;font:700 10px var(--font-manrope),sans-serif;cursor:pointer}.judge-toggle:hover{border-color:#c9b88e;background:#f8f7f0}
