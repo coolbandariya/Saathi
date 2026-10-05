@@ -73,31 +73,38 @@ def readiness() -> dict[str, object]:
 
 
 @app.post("/api/v1/conversation", response_model=ConversationResponse)
-def conversation(payload: ConversationRequest, request: Request) -> ConversationResponse:
+async def conversation(payload: ConversationRequest, request: Request) -> ConversationResponse:
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(key):
         raise HTTPException(status_code=429, detail="rate_limited")
-    intent = classify_intent(payload.message)
-    replies = {
-        "scheme": "Bilkul. Main scheme ki jaankari aur required documents samajhne mein madad karunga.",
-        "farming": "Bilkul. Main mausam, mandi aur kheti se judi jaankari mein madad karunga.",
-        "document": "Document milne par main uska text samajhne aur zaroori action nikalne mein madad kar sakta hoon.",
-        "task": "Theek hai. Main is request ko follow-up task ke roop mein rakhne ke liye taiyar hoon.",
-        "human": "Theek hai. Main aapki request ko human volunteer ke liye escalate karne ke liye taiyar hoon.",
-        "general": "Namaste! Main Saathi hoon. Aap Hindi mein apni zaroorat bata sakte hain.",
-    }
-    escalated = intent == "human"
+    outcome = await orchestrator.handle(
+        payload.message,
+        AgentContext(
+            household_id=payload.household_id,
+            language=payload.language,
+            location=payload.location,
+        ),
+    )
+    source = None
+    if outcome.result and outcome.result.source:
+        source = {
+            "name": outcome.result.source.name,
+            "url": outcome.result.source.url,
+            "retrieved_at": outcome.result.source.retrieved_at.isoformat(),
+            "freshness_note": outcome.result.source.freshness_note,
+        }
+    failed = bool(outcome.result and not outcome.result.ok)
     return ConversationResponse(
-        status="ok",
-        reply=replies[intent],
-        intent=intent,
+        status="error" if failed else "ok",
+        reply=outcome.reply,
+        intent=outcome.intent,
+        source=source,
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
-        escalated=escalated,
-        escalation_reason="explicit_human_request" if escalated else None,
-        confidence=1.0 if escalated else 0.85,
+        escalated=outcome.escalated,
+        escalation_reason=outcome.escalation_reason,
+        confidence=outcome.confidence,
     )
-
 
 @app.post("/api/v1/agent", response_model=ConversationResponse)
 async def agent(payload: AgentRequest, request: Request) -> ConversationResponse:
