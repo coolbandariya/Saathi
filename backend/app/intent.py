@@ -12,24 +12,24 @@ _RULES: tuple[tuple[Intent, tuple[str, ...]], ...] = (
 )
 
 _HINDI_NEGATION = re.compile(r"(?:नहीं|मत|ना)")
+_HUMAN_TERMS = r"(?:इंसान|व्यक्ति|अधिकारी|मानव|human|volunteer|person)"
 
 
 def _contains_keyword(text: str, keyword: str) -> bool:
-    pattern = re.escape(keyword).replace(r"\ ", r"\s+")
-    # Unicode-aware boundaries avoid matching words such as "personality" for "person".
-    return re.search(rf"(?<![\w]){pattern}(?![\w])", text, flags=re.UNICODE) is not None
+    pattern = re.escape(keyword).replace(r"\\ ", r"\\s+")
+    return re.search(rf"(?<![\\w]){pattern}(?![\\w])", text, flags=re.UNICODE) is not None
 
 
 def _human_request_is_negated(text: str) -> bool:
-    for match in re.finditer(r"(?:इंसान|व्यक्ति|अधिकारी|मानव|human|volunteer|person)", text):
-        window = text[max(0, match.start() - 24):match.start()]
+    for match in re.finditer(_HUMAN_TERMS, text):
+        window = text[max(0, match.start() - 32):min(len(text), match.end() + 32)]
         if _HINDI_NEGATION.search(window):
             return True
     return False
 
 
 def classify_intent(message: str) -> Intent:
-    text = re.sub(r"\s+", " ", message.casefold()).strip()
+    text = re.sub(r"\\s+", " ", message.casefold()).strip()
     for intent, keywords in _RULES:
         if intent == "human" and _human_request_is_negated(text):
             continue
