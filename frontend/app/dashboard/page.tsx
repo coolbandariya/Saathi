@@ -14,12 +14,14 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const DEMO_LOCATION = { latitude: 28.9931, longitude: 77.0151, label: "Sonipat district · demo context" };
 
 type Source = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
+type Evidence = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
 type Result = {
   reply: string;
   intent: string;
   demo: boolean;
   correlation_id?: string;
   source?: Source;
+  sources?: Evidence[];
   escalated?: boolean;
   escalation_reason?: string | null;
   confidence?: number | null;
@@ -90,7 +92,7 @@ export default function Dashboard() {
     ["02", "Language + intent detected", true],
     ["03", "Specialist agent selected", !!result],
     ["04", "Verified tool boundary", !!result],
-    ["05", "Source + timestamp attached", !!result?.source],
+    ["05", "Source + timestamp attached", !!result?.source || !!result?.sources?.length],
     ["06", "Household memory", memoryConsent && !!result],
     ["07", "Human fallback", result?.intent === "human"],
   ] as const, [result, memoryConsent]);
@@ -339,9 +341,10 @@ export default function Dashboard() {
               <motion.div className="answer-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="answer-label"><span><Bot size={15} /> SAATHI RESPONSE</span><b>{result.intent}</b></div>
                 <p>{result.reply}</p>
-                {result.source ? (
-                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span><small>Retrieved · {new Date(result.source.retrieved_at).toLocaleString()}</small>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
-                ) : (
+                {(result.sources?.length ? result.sources : result.source ? [result.source] : []).map((source, index) => (
+                  <div className="source-row" key={`${source.name}-${source.retrieved_at}-${index}`}><CheckCircle2 size={15} /><div><strong>{source.name}</strong><span>{source.freshness_note || "Provider result retrieved with timestamp."}</span><small>Retrieved · {new Date(source.retrieved_at).toLocaleString()}</small>{source.url && <a href={source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
+                ))}
+                {!result.sources?.length && !result.source && (
                   <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
                 )}
                 {result.correlation_id && <div className="correlation-line">Correlation ID · <code>{result.correlation_id}</code>{result.tool_name && <> · Tool · <strong>{result.tool_name}</strong></>}{typeof result.latency_ms === "number" && <> · Turn · <strong>{result.latency_ms} ms</strong></>}</div>}
