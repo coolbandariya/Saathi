@@ -23,6 +23,8 @@ type Result = {
   escalated?: boolean;
   escalation_reason?: string | null;
   confidence?: number | null;
+  tool_name?: string | null;
+  latency_ms?: number | null;
 };
 
 const scenarios = [
@@ -333,7 +335,7 @@ export default function Dashboard() {
                 ) : (
                   <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
                 )}
-                {result.correlation_id && <div className="correlation-line">Correlation ID · <code>{result.correlation_id}</code></div>}
+                {result.correlation_id && <div className="correlation-line">Correlation ID · <code>{result.correlation_id}</code>{result.tool_name && <> · Tool · <strong>{result.tool_name}</strong></>}{typeof result.latency_ms === "number" && <> · Turn · <strong>{result.latency_ms} ms</strong></>}</div>}
               </motion.div>
             )}
           </div>
