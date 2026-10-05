@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const DEMO_LOCATION = { latitude: 28.9931, longitude: 77.0151, label: "Sonipat district · demo context" };
 
 type Source = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
 type Result = {
@@ -138,6 +139,9 @@ export default function Dashboard() {
           form.append("audio", blob, "caller.webm");
           form.append("language", "hi");
           form.append("household_id", "demo-household");
+          form.append("latitude", String(DEMO_LOCATION.latitude));
+          form.append("longitude", String(DEMO_LOCATION.longitude));
+          form.append("location_label", DEMO_LOCATION.label);
           const response = await fetch(`${API}/api/v1/voice/turn`, { method: "POST", body: form });
           const body = await response.json();
           if (!response.ok) throw new Error(body.detail || `Voice request failed: ${response.status}`);
@@ -173,7 +177,7 @@ export default function Dashboard() {
       const response = await fetch(`${API}/api/v1/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, language: "hi", household_id: "demo-household" }),
+        body: JSON.stringify({ message, language: "hi", household_id: "demo-household", location: DEMO_LOCATION }),
       });
       if (!response.ok) throw new Error(`Agent request failed: ${response.status}`);
       setResult(await response.json());
@@ -325,7 +329,7 @@ export default function Dashboard() {
                 <div className="answer-label"><span><Bot size={15} /> SAATHI RESPONSE</span><b>{result.intent}</b></div>
                 <p>{result.reply}</p>
                 {result.source ? (
-                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
+                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span><small>Retrieved · {new Date(result.source.retrieved_at).toLocaleString()}</small>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
                 ) : (
                   <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
                 )}
@@ -354,7 +358,7 @@ export default function Dashboard() {
         <section className="context-grid">
           <article className="context-card">
             <div className="context-title"><div><span className="panel-kicker">FIELD CONTEXT</span><h3>Where should Saathi look?</h3></div><MapPin size={18} /></div>
-            <div className="location-row"><div className="map-placeholder"><MapPin size={23} /><span>FIELD CONTEXT</span></div><div><strong>Sonipat district</strong><p>Location is shown as caller-provided/demo context. No browser GPS is claimed.</p><span className="source-status"><i /> Location source · contextual</span></div></div>
+            <div className="location-row"><div className="map-placeholder"><MapPin size={23} /><span>FIELD CONTEXT</span></div><div><strong>Sonipat district</strong><p>Explicit demo context is passed to the API. No browser GPS is claimed.</p><span className="source-status"><i /> Location source · contextual</span></div></div>
           </article>
 
           <article className="context-card">
