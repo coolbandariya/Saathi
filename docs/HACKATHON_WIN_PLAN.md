@@ -172,7 +172,7 @@ Never claim:
 ## Judge-winning upgrades discovered in current research
 
 1. **Make the agent visibly agentic, not merely routed.** Show a planner/tool decision, tool execution, evidence returned, and response policy. Gemini Interactions is now GA and explicitly supports structured tool calls; keep execution in Saathi so the model remains a planner rather than the source of truth.
-2. **Make voice genuinely real before claiming phone intelligence.** Sarvam Realtime STT supports partial/final transcripts, server VAD, `speech_start`/`speech_end`, and `flush`; Saaras v4 supports keyterm prompting. Exotel AgentStream supports bidirectional PCM and `clear` for barge-in.
+2. **Verify the newly implemented realtime voice transport before claiming phone intelligence.** Sarvam Realtime STT supports partial/final transcripts, server VAD, `speech_start`/`speech_end`, and `flush`; Saaras v4 supports keyterm prompting. Exotel AgentStream supports bidirectional PCM and `clear` for barge-in.
 3. **Make the farming story unusually trustworthy.** The government mandi dataset is daily-granularity AGMARKNET data, so Saathi should say “latest government-reported market observation” and expose the observation date—not imply tick-level or guaranteed same-day availability.
 4. **Turn evaluation into a competitive asset.** Report intent, entity, tool-selection, grounded-answer, escalation, WER, first-transcript, first-audio and p50/p95 turn latency with provider/model versions and test-set date.
 5. **Design for judge interruption.** Every demo step needs a fallback: preloaded demo route if provider fails, visible LIVE/DEMO state, and a 20-second deterministic “proof mode” that never fabricates a live answer.
