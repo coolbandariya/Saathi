@@ -2,7 +2,7 @@ import json
 import math
 from typing import Any, Awaitable, Callable
 
-from .exotel_stream import decode_media, encode_media, parse_start
+from .exotel_stream import decode_media, encode_clear, encode_media, parse_start
 
 
 def _is_silent(pcm: bytes, *, threshold: int = 450) -> bool:
@@ -46,9 +46,10 @@ async def run_exotel_session(
     audio_buffer = bytearray()
     silent_bytes = 0
     saw_speech = False
+    playback_active = False
 
     async def process_turn() -> None:
-        nonlocal audio_buffer, silent_bytes, saw_speech
+        nonlocal audio_buffer, silent_bytes, saw_speech, playback_active
         if not audio_buffer:
             return
         pcm = bytes(audio_buffer)
@@ -63,7 +64,11 @@ async def run_exotel_session(
             return
         audio = await synthesize(reply, sample_rate)
         if stream_sid and audio:
+            playback_active = True
             await websocket.send(encode_media(stream_sid, audio))
+            # Exotel can interrupt buffered output when the caller starts speaking again.
+            # The next inbound speech frame clears the remote playback buffer.
+
 
     async for raw in websocket:
         try:
@@ -85,6 +90,7 @@ async def run_exotel_session(
             audio_buffer.clear()
             silent_bytes = 0
             saw_speech = False
+            playback_active = False
             continue
 
         if event_type == "media":
@@ -103,6 +109,9 @@ async def run_exotel_session(
                 silent_bytes += len(frame)
             else:
                 silent_bytes = 0
+                if playback_active and stream_sid:
+                    await websocket.send(encode_clear(stream_sid))
+                    playback_active = False
                 saw_speech = True
 
             duration = len(audio_buffer) / (sample_rate * 2)
@@ -114,6 +123,7 @@ async def run_exotel_session(
             continue
 
         if event_type == "stop":
+            playback_active = False
             await process_turn()
             break
 
