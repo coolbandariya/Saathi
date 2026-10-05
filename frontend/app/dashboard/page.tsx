@@ -325,7 +325,7 @@ export default function Dashboard() {
                 <div className="answer-label"><span><Bot size={15} /> SAATHI RESPONSE</span><b>{result.intent}</b></div>
                 <p>{result.reply}</p>
                 {result.source ? (
-                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</Link>}</div></div>
+                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
                 ) : (
                   <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
                 )}
@@ -399,7 +399,7 @@ export default function Dashboard() {
 
         <footer className="command-footer" aria-label="Saathi footer">
           <span>SAATHI · VOICE-FIRST ACCESS</span><span>Prototype control room · 2026</span>
-          <a href="/"><ArrowLeft size={14} /> Back to product</a>
+          <Link href="/"><ArrowLeft size={14} /> Back to product</Link>
         </footer>
       </div>
     </main>
