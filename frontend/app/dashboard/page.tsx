@@ -120,7 +120,7 @@ export default function Dashboard() {
           if (body.audio_base64) {
             const bytes = Uint8Array.from(atob(body.audio_base64), (char) => char.charCodeAt(0));
             const audio = new Audio(URL.createObjectURL(new Blob([bytes], { type: body.audio_mime_type || "audio/wav" })));
-            audio.onended = () => setVoiceState("idle");
+            audio.onended = () => { URL.revokeObjectURL(audio.src); setVoiceState("idle"); };
             await audio.play();
           }
         } catch (error) {
