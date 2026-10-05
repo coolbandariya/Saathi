@@ -15,7 +15,7 @@ class FakeExotelWS:
     async def __anext__(self):
         if not self.events:
             raise StopAsyncIteration
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.02)
         return self.events.pop(0)
 
     async def send(self, value):
@@ -77,11 +77,7 @@ def test_realtime_bridge_forwards_pcm_and_handles_barge_in():
 
         async def tts(text, sample_rate):
             calls.append(("tts", text, sample_rate))
-
-            async def chunks():
-                yield b"reply"
-
-            return chunks()
+            yield b"reply"
 
         await run_exotel_realtime_session(
             ws,
