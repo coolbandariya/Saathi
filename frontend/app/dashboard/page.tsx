@@ -38,11 +38,11 @@ const flowSteps: [string, string, string, LucideIcon][] = [
 ];
 
 const judgeSteps = [
-  ["call", "Missed call arrives", "Voice channel", PhoneCall],
+  ["call", "Call event simulated", "Voice channel", PhoneCall],
   ["lang", "Hindi understood", "Language + intent", Languages],
-  ["agent", "Farming agent selected", "Specialist routing", Bot],
+  ["agent", "Farming route selected", "Specialist routing", Bot],
   ["tool", "Mandi source checked", "Verified tool", Wheat],
-  ["memory", "Consent checked", "No silent memory", ShieldCheck],
+  ["memory", "Consent boundary shown", "No silent memory", ShieldCheck],
   ["fallback", "Human fallback ready", "Escalation", UserRound],
 ] as const;
 
@@ -224,7 +224,7 @@ export default function Dashboard() {
           <div>
             <div className="eyebrow"><span className="eyebrow-line" /> SAATHI COMMAND CENTER</div>
             <h1>From voice to <em>action.</em></h1>
-            <p>Inspect the complete caller journey: language, specialist agents, verified tools, consent-aware memory and human fallback.</p>
+            <p>Inspect the complete demo journey: language, specialist routing, verified tools, evidence, consent boundaries and human fallback.</p>
           </div>
           <div className="header-badges">
             <span><Zap size={13} /> {apiOnline ? (apiReady ? "API ready" : "API online") : "API offline"}</span>
@@ -239,7 +239,7 @@ export default function Dashboard() {
             <div className="judge-copy">
               <div className="panel-kicker">JUDGE MODE · GOLDEN DEMO</div>
               <div className="judge-title-row"><h2 id="judge-mode-title">One call. One visible chain.</h2><button type="button" className="judge-close" onClick={() => setShowJudge(false)} aria-label="Close judge mode"><X size={16} /></button></div>
-              <p>Run the recommended 60-second story: request → Hindi → farming intent → verified tools → consent boundary → human fallback.</p>
+              <p>Run the recommended 60-second story: request → Hindi → farming intent → verified tools → evidence → human fallback.</p>
               <button type="button" className="judge-start" onClick={startJudge}>
                 <Play size={15} fill="currentColor" /> Start golden demo
               </button>
