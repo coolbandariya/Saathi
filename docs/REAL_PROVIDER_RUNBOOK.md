@@ -9,6 +9,7 @@ This is the final non-Supabase verification sequence. Run it against the exact c
 Set:
 - DEMO_MODE=false
 - SARVAM_API_KEY
+- SARVAM_REALTIME_STT_ENABLED=true for realtime phone verification
 - GEMINI_API_KEY only if reasoning is being demonstrated
 - MANDI_API_KEY
 - MANDI_RESOURCE_ID
@@ -18,6 +19,7 @@ Then verify:
 - GET /health/live
 - GET /health/ready
 - POST /api/v1/agent with a fully specified farming request
+- POST /api/v1/agent with the combined golden request: mandi price + next-24h rain
 - POST /api/v1/agent with an underspecified farming request
 - POST /api/v1/agent with a farmer-scheme request
 
@@ -46,6 +48,8 @@ caller audio -> Exotel -> Saathi -> STT -> agent -> TTS -> Exotel -> caller.
 
 Capture:
 - call/session ID
+- first partial transcript timestamp
+- final transcript timestamp
 - transcript
 - p50/p95 turn latency
 - first audio latency
