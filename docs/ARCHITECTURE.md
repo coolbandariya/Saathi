@@ -6,11 +6,13 @@ Saathi is a voice-first AI agent that remembers unfinished tasks and proactively
 
 ## Runtime flow
 
-Phone/Web voice -> telephony or browser gateway -> STT -> orchestrator -> specialist agent -> validated tools -> Supabase memory/tasks -> TTS -> user.
+Phone/Web voice -> telephony or browser gateway -> STT -> orchestrator -> specialist tool boundary -> validated tools -> provenance -> TTS -> user.
+
+Persistence is an optional P1 layer: when enabled, consented household memory/tasks are stored through repository interfaces and Supabase/RLS. The current non-Supabase runtime does not require Supabase.
 
 ## Provider adapters
 
-External services must be isolated behind interfaces so they can be replaced without changing agent logic. Initial targets are Exotel for Indian telephony, Bhashini/Whisper for speech, Gemini/local model for reasoning, Supabase/Postgres/pgvector for persistence, Open-Meteo for weather, and official government/agriculture data sources for factual answers.
+External services must be isolated behind interfaces so they can be replaced without changing agent logic. Current implemented targets are Exotel for telephony, Sarvam Saaras/Bulbul for speech, optional Gemini tool routing, Open-Meteo for weather, and official government/agriculture data sources for factual answers. BHASHINI is an expansion path, not an implemented dependency.
 
 ## Safety boundaries
 
