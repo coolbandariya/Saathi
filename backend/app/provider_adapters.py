@@ -30,7 +30,8 @@ async def _request_with_retry(client, method: str, url: str, *, attempts: int = 
     for attempt in range(attempts):
         try:
             response = await client.request(method, url, **kwargs)
-            if response.status_code not in {429, 500, 502, 503, 504} or attempt == attempts - 1:
+            status_code = getattr(response, "status_code", 200)
+            if status_code not in {429, 500, 502, 503, 504} or attempt == attempts - 1:
                 return response
         except httpx.RequestError:
             if attempt == attempts - 1:
