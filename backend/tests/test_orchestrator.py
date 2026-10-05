@@ -40,7 +40,8 @@ def test_mandi_path_labels_demo_data():
     outcome = asyncio.run(Orchestrator().handle("सोनीपत मंडी में गेहूं का भाव", AgentContext(household_id="h1")))
     assert outcome.intent == "farming"
     assert outcome.result is not None and outcome.result.ok
-    assert "डेमो" in outcome.reply
+    assert outcome.result.source is not None
+    assert "DEMO DATA" in (outcome.result.source.freshness_note or "")
 
 
 def test_mandi_without_live_configuration_is_not_presented_as_live(monkeypatch):
