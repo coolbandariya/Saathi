@@ -59,3 +59,7 @@ See docs/BUILD_PLAN.md for the milestone sequence and docs/ARCHITECTURE.md for t
 ## Hackathon
 
 The project is being prepared for JAI 2026 and Tech Eximius 2.0. Submission claims will match functionality actually demonstrated by the submitted build.
+
+### Backend readiness hardening
+
+The current product branch also includes deterministic intent boundaries, policy-backed escalation decisions, optional caller-provided field location, degraded readiness reporting when provider contracts are absent, and webhook idempotency using a deterministic provider-event/body fingerprint. The webhook store is intentionally in-memory for the demo; production persistence still requires a durable repository such as Supabase.
