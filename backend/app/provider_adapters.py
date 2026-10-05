@@ -29,7 +29,7 @@ class SarvamSpeechToTextProvider:
         self.api_key, self.endpoint, self.model, self.mode, self.timeout_seconds = api_key, endpoint, model, mode, timeout_seconds
 
     async def transcribe(self, audio: bytes, *, language: str) -> str:
-        language_code = language if "-" in language else f"{language}-IN"
+        language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             response = await client.post(
                 self.endpoint,
