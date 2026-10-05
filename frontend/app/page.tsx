@@ -1,4 +1,4 @@
-"use client";
+"use client";\nimport "./home.css";
 
 import { motion } from "motion/react";
 import { ArrowRight, ArrowUpRight, AudioLines, Check, CheckCircle2, Database, Languages, Mic2, PhoneCall, ShieldCheck, Sparkles, Wheat, Zap } from "lucide-react";
