@@ -14,7 +14,7 @@ The strongest improvement is to make every step real, measurable and replaceable
 
 ### Voice runtime
 
-Sarvam's current realtime STT endpoint is the preferred direction for a production phone agent. It provides interim and final transcripts, server-side VAD, mid-call configuration updates and explicit audio-input events. The fast stream type is designed for conversational use.
+Sarvam's current Realtime STT endpoint is the preferred direction for a production phone agent. It provides interim and final transcripts, server-side VAD, mid-call configuration updates and explicit audio-input events; `saaras:v4` is supported on the Realtime endpoint. For browser turn capture, the REST STT endpoint accepts WebM, so the current browser path can stay REST-based while the phone path moves to Realtime.
 
 Exotel AgentStream provides bidirectional WebSocket audio using raw mono 16-bit Linear16 PCM at 8, 16 or 24 kHz. A public wss:// endpoint is required for a real phone connection.
 
@@ -23,8 +23,9 @@ Implication:
 - keep the current Exotel protocol boundary
 - replace the bounded REST speech adapter with a realtime STT/TTS transport next
 - use provider VAD for turn detection rather than adding a second VAD blindly
-- implement barge-in by clearing outbound Exotel audio when caller speech starts
+- implement barge-in by clearing outbound Exotel audio when caller speech starts (`clear` event)
 - add reconnect/failover handling and call-level correlation IDs
+- use Saaras v4 keyterms for high-value places/commodities where recognition errors are costly
 - measure TTFT/TTFA, end-of-turn latency and dropped-session rate
 
 ### Document AI
@@ -91,6 +92,13 @@ Only after the above is stable:
 3. More commodities/markets.
 4. Noisy Hindi/Hinglish benchmark.
 5. Haryanvi benchmark before claiming Haryanvi support.
+
+## Provider contract notes (verified 2026-10-06)
+
+- Sarvam REST STT accepts WebM and supports `saaras:v4`; this matches the browser `MediaRecorder` path.
+- Sarvam Realtime STT is the better production voice-agent transport because it exposes partial transcripts and millisecond VAD controls.
+- Exotel Voicebot sessions use raw mono Linear16 PCM and support bidirectional `media`, `mark`, and `clear`; `clear` is the required primitive for barge-in playback cancellation.
+- Sarvam Bulbul v3 REST returns base64 audio and supports WAV/telephony codecs; Saathi currently uses WAV for browser playback and should use an 8 kHz telephony codec when the phone path is finalized.
 
 ## Evaluation plan
 
