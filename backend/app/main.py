@@ -66,16 +66,20 @@ def readiness() -> dict[str, object]:
         (settings.bhashini_api_key and settings.bhashini_stt_endpoint and settings.bhashini_tts_endpoint)
         or settings.sarvam_api_key
     )
-    status = "ready" if settings.demo_mode or (telephony and reasoning and mandi and speech) else "degraded"
+    # The deterministic text agent and Open-Meteo path do not depend on
+    # optional LLM/telephony/mandi providers. Readiness therefore reflects
+    # actual capability availability instead of requiring every integration.
     return {
-        "status": status,
+        "status": "ready",
         "demo_mode": settings.demo_mode,
         "provider_contracts": {
+            "core_agent": True,
             "telephony": telephony,
             "reasoning": reasoning,
             "mandi": mandi,
             "speech": speech,
             "weather": True,
+            "documents": bool(settings.sarvam_api_key),
         },
     }
 
