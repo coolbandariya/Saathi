@@ -46,7 +46,7 @@ class DemoMandiTool:
             },
             source=SourceRecord(
                 name="Saathi Demo Mandi",
-                url="https://www.enam.gov.in/",
+                url="https://data.gov.in/resource/current-daily-price-various-commodities-various-markets-mandi",
                 retrieved_at=datetime.now(timezone.utc),
                 freshness_note="DEMO DATA — not a live market quote.",
             ),
