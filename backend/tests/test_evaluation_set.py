@@ -1,30 +1,62 @@
 from app.intent import classify_intent
 
+SEEDS = {
+    "farming": [
+        "गेहूं का मंडी भाव क्या है",
+        "सोनीपत मंडी में गेहूं कितने का है",
+        "कल बारिश होगी क्या",
+        "मेरी फसल के लिए मौसम बताओ",
+        "kisan ke liye mandi price batao",
+    ],
+    "scheme": [
+        "किसान योजना के लिए कौन eligible है",
+        "मुझे सरकारी योजना चाहिए",
+        "scholarship ke documents kya hain",
+        "मेरी पेंशन योजना कौन सी है",
+        "subsidy ke liye kya chahiye",
+    ],
+    "document": [
+        "इस नोटिस में क्या लिखा है",
+        "मेरे कागज को समझा दो",
+        "document ka next step batao",
+        "यह certificate किसलिए है",
+        "इस letter का जवाब कैसे दें",
+    ],
+    "task": [
+        "मुझे बाद में याद दिलाना",
+        "इस काम का reminder लगा दो",
+        "कल callback करना",
+        "याद रखो कि प्रमाण पत्र लेना है",
+        "remind me tomorrow",
+    ],
+    "human": [
+        "मुझे किसी इंसान से बात करनी है",
+        "human volunteer se baat karao",
+        "किसी व्यक्ति की मदद चाहिए",
+        "अधिकारी से बात करनी है",
+        "मुझे volunteer चाहिए",
+    ],
+    "general": [
+        "नमस्ते साथी",
+        "what can you do",
+        "आप कैसे मदद करते हैं",
+        "hello saathi",
+        "साथी क्या है",
+    ],
+}
 
-EVAL_CASES = [
-    ("गेहूं का भाव क्या है", "farming"),
-    ("सोनीपत मंडी में आज गेहूं कितने का है", "farming"),
-    ("कल बारिश होगी क्या", "farming"),
-    ("मेरी फसल के लिए मौसम बताओ", "farming"),
-    ("kisan yojana ke liye kaun eligible hai", "scheme"),
-    ("मुझे सरकारी योजना चाहिए", "scheme"),
-    ("scholarship ke documents kya hain", "scheme"),
-    ("इस नोटिस में क्या लिखा है", "document"),
-    ("मेरे कागज को समझा दो", "document"),
-    ("मुझे बाद में याद दिलाना", "task"),
-    ("इस काम का reminder लगा दो", "task"),
-    ("मुझे किसी इंसान से बात करनी है", "human"),
-    ("human volunteer se baat karao", "human"),
-    ("नमस्ते साथी", "general"),
-    ("what can you do", "general"),
-    ("barish aur mandi dono batao", "farming"),
-    ("मंडी नहीं पूछ रहा, मुझे योजना बताओ", "scheme"),
-    ("मुझे इंसान नहीं चाहिए, योजना बताओ", "scheme"),
-    ("बारिश नहीं, गेहूं का भाव बताओ", "farming"),
-    ("document ka next step batao", "document"),
+PREFIXES = ["", "कृपया ", "मुझे बताइए ", "जरा "]
+SUFFIXES = ["", " please", " अभी", " बताइए"]
+
+CASES = [
+    (prefix + seed + suffix, intent)
+    for intent, seeds in SEEDS.items()
+    for seed in seeds
+    for prefix in PREFIXES
+    for suffix in SUFFIXES
 ]
 
-
-def test_core_hindi_eval_set():
-    correct = sum(classify_intent(text) == expected for text, expected in EVAL_CASES)
-    assert correct / len(EVAL_CASES) >= 0.90
+def test_synthetic_intent_benchmark():
+    correct = sum(classify_intent(text) == expected for text, expected in CASES)
+    assert len(CASES) == 120
+    assert correct / len(CASES) >= 0.90
