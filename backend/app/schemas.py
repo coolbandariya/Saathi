@@ -21,6 +21,7 @@ class ConversationResponse(BaseModel):
     task_created: bool = False
     source: SourceResponse | None = None
     demo: bool = False
+    correlation_id: str | None = None
 
 class AgentRequest(ConversationRequest):
     pass
