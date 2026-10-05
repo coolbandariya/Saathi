@@ -240,8 +240,27 @@ async def run_exotel_realtime_session(
                 continue
 
             if event_type == "stop":
+                end = getattr(stt_session, "end", None)
+                if end is not None:
+                    await end()
                 break
 
+        if reader_task:
+            try:
+                await asyncio.wait_for(asyncio.shield(reader_task), timeout=2.0)
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                raise exc
+        if response_task:
+            try:
+                await asyncio.wait_for(asyncio.shield(response_task), timeout=5.0)
+            except asyncio.TimeoutError:
+                await cancel_response()
+            except asyncio.CancelledError:
+                pass
         if stream_sid:
             await stt_session.close()
     finally:
