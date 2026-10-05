@@ -48,9 +48,18 @@ Never commit .env files or secrets. Start from the provided .env.example files.
 - Treat healthcare as informational/navigation support in the MVP.
 - Do not merge failing required checks.
 
-## Build roadmap
+## Engineering playbook
 
-See docs/BUILD_PLAN.md for the milestone sequence and docs/ARCHITECTURE.md for the target runtime. GitHub Issues track the major workstreams.
+- `docs/BUILD_PLAN.md` — implementation sequence
+- `docs/ARCHITECTURE.md` — target runtime architecture
+- `docs/API_CONTRACTS.md` — current HTTP contracts
+- `docs/PROVIDER_MATRIX.md` — replaceable external-service strategy
+- `docs/TEST_MATRIX.md` — quality gates
+- `docs/REPO_GOVERNANCE.md` — definition of done and release gates
+- `docs/DEMO_CONTRACT.md` — what the hackathon demo must actually prove
+- GitHub Issues — major implementation workstreams
+
+See the open foundation PR before starting parallel feature work.
 
 ## Hackathon
 
