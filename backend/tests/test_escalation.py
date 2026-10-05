@@ -1,4 +1,4 @@
-from backend.app.escalation import EscalationPolicy
+from app.escalation import EscalationPolicy
 
 
 def test_explicit_human_request_always_escalates() -> None:
