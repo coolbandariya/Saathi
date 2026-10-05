@@ -318,6 +318,10 @@ class SarvamRealtimeSTTSession:
             raise ValueError("sarvam_realtime_invalid_event")
         return payload
 
+    async def end(self) -> None:
+        if self._ws is not None:
+            await self._ws.send(json.dumps({"event": "end"}))
+
     async def close(self) -> None:
         if self._ws is not None:
             await self._ws.close()
