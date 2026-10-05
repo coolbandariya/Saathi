@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .config import get_settings
 from .escalation import EscalationPolicy, EscalationReason
+from .http_tools import DataGovMandiTool, OpenMeteoWeatherTool
 from .intent import classify_intent
 from .provenance import ToolResult
 from .schemas import Intent, LocationContext
@@ -28,8 +30,21 @@ class AgentOutcome:
 
 class Orchestrator:
     def __init__(self) -> None:
-        self.weather = DemoWeatherTool()
-        self.mandi = DemoMandiTool()
+        settings = get_settings()
+        if settings.demo_mode:
+            self.weather = DemoWeatherTool()
+            self.mandi = DemoMandiTool()
+        else:
+            self.weather = OpenMeteoWeatherTool()
+            self.mandi = (
+                DataGovMandiTool(
+                    api_key=settings.mandi_api_key,
+                    resource_id=settings.mandi_resource_id,
+                    api_base=settings.mandi_api_base,
+                )
+                if settings.mandi_api_key and settings.mandi_resource_id
+                else None
+            )
         self.escalation = EscalationPolicy()
 
     def _outcome(
@@ -77,9 +92,10 @@ class Orchestrator:
                 result = await self.weather.forecast(latitude=latitude, longitude=longitude)
                 if result.ok:
                     d = result.data
+                    probability = d.get("rain_probability_pct", d.get("next_24h_rain_probability_max", 0))
                     return self._outcome(
                         intent=intent,
-                        reply=f"अभी उपलब्ध जानकारी के अनुसार तापमान {d['temperature_c']}°C है और बारिश की संभावना {d['rain_probability_pct']}% है।",
+                        reply=f"उपलब्ध मौसम जानकारी के अनुसार तापमान {d['temperature_c']}°C है और अगले 24 घंटे में बारिश की अधिकतम संभावना {probability}% है।",
                         result=result,
                     )
                 return self._outcome(
@@ -89,15 +105,27 @@ class Orchestrator:
                     confidence=0.55,
                 )
 
+            if self.mandi is None:
+                return self._outcome(
+                    intent=intent,
+                    reply="मंडी का लाइव सरकारी स्रोत अभी configured नहीं है। मैं डेमो भाव को live भाव बताकर नहीं दिखाऊँगा।",
+                    confidence=0.55,
+                )
+
             result = await self.mandi.price(commodity="गेहूं", state="Haryana", district="Sonipat")
             if result.ok:
                 d = result.data
                 return self._outcome(
                     intent=intent,
-                    reply=f"डेमो मंडी डेटा के अनुसार {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है। यह डेमो डेटा है, लाइव भाव नहीं।",
+                    reply=f"सरकारी बाजार डेटा के अनुसार {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है।",
                     result=result,
                 )
-            return self._outcome(intent=intent, reply="अभी मंडी की जानकारी उपलब्ध नहीं है।", result=result, confidence=0.55)
+            return self._outcome(
+                intent=intent,
+                reply="अभी सरकारी मंडी स्रोत से विश्वसनीय भाव नहीं मिला। मैं अनुमान नहीं दूँगा।",
+                result=result,
+                confidence=0.55,
+            )
 
         replies = {
             "scheme": "मैं सरकारी योजनाओं की पात्रता और जरूरी दस्तावेज़ समझाने में मदद कर सकता हूँ।",
