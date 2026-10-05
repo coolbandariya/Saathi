@@ -1,13 +1,16 @@
-from fastapi import FastAPI, Header, HTTPException, Request
+from base64 import b64encode
+
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .intent import classify_intent
-from .schemas import AgentRequest, ConversationRequest, ConversationResponse
+from .schemas import AgentRequest, ConversationRequest, ConversationResponse, VoiceTurnResponse
 from .orchestrator import AgentContext, Orchestrator
 from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
 from .observability import get_correlation_id, set_correlation_id
+from .voice import VoiceGateway
 from .webhook_events import InMemoryWebhookEventStore, derive_event_id
 
 
@@ -24,6 +27,7 @@ app.add_middleware(
 limiter = InMemoryRateLimiter()
 orchestrator = Orchestrator()
 webhook_events = InMemoryWebhookEventStore()
+voice_gateway = VoiceGateway(settings, orchestrator)
 
 
 @app.middleware("http")
@@ -37,12 +41,7 @@ async def correlation_middleware(request: Request, call_next):
 
 @app.get("/health")
 def health() -> dict[str, str | bool]:
-    return {
-        "status": "ok",
-        "service": "saathi-api",
-        "version": app.version,
-        "demo_mode": settings.demo_mode,
-    }
+    return {"status": "ok", "service": "saathi-api", "version": app.version, "demo_mode": settings.demo_mode}
 
 
 @app.get("/health/live")
@@ -107,11 +106,7 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
         raise HTTPException(status_code=429, detail="rate_limited")
     outcome = await orchestrator.handle(
         payload.message,
-        AgentContext(
-            household_id=payload.household_id,
-            language=payload.language,
-            location=payload.location,
-        ),
+        AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
     )
     source = None
     if outcome.result and outcome.result.source:
@@ -132,6 +127,54 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
         escalated=outcome.escalated,
         escalation_reason=outcome.escalation_reason,
         confidence=outcome.confidence,
+    )
+
+
+@app.post("/api/v1/voice/turn", response_model=VoiceTurnResponse)
+async def voice_turn(
+    request: Request,
+    audio: UploadFile = File(...),
+    language: str = Form("hi"),
+    household_id: str | None = Form(None),
+) -> VoiceTurnResponse:
+    key = request.client.host if request.client else "unknown"
+    if not limiter.allow(f"voice:{key}"):
+        raise HTTPException(status_code=429, detail="rate_limited")
+    raw = await audio.read()
+    if not raw:
+        raise HTTPException(status_code=422, detail="empty_audio")
+    if len(raw) > 8_000_000:
+        raise HTTPException(status_code=413, detail="audio_too_large")
+    try:
+        turn = await voice_gateway.handle(raw, language=language, household_id=household_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="voice_provider_error") from exc
+
+    source = None
+    if turn.outcome.result and turn.outcome.result.source:
+        source = {
+            "name": turn.outcome.result.source.name,
+            "url": turn.outcome.result.source.url,
+            "retrieved_at": turn.outcome.result.source.retrieved_at.isoformat(),
+            "freshness_note": turn.outcome.result.source.freshness_note,
+        }
+    return VoiceTurnResponse(
+        status="ok",
+        transcript=turn.transcript,
+        reply=turn.outcome.reply,
+        intent=turn.outcome.intent,
+        audio_base64=b64encode(turn.audio).decode("ascii") if turn.audio else None,
+        audio_mime_type="audio/wav" if turn.audio else None,
+        source=source,
+        demo=settings.demo_mode,
+        correlation_id=get_correlation_id(),
+        escalated=turn.outcome.escalated,
+        escalation_reason=turn.outcome.escalation_reason,
+        confidence=turn.outcome.confidence,
     )
 
 
