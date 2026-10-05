@@ -65,7 +65,7 @@ class Orchestrator:
         decision = self.escalation.evaluate(
             confidence=confidence,
             explicit_human_request=explicit_human_request,
-            provider_failed=bool(result and not result.ok),
+            provider_failed=bool(result and not result.ok) or any(not item.ok for item in results),
             safety_boundary=safety_boundary,
         )
         return AgentOutcome(
@@ -119,19 +119,21 @@ class Orchestrator:
                         confidence=0.78,
                         tool_name="get_mandi_price",
                     )
-                if self.mandi is None:
-                    return self._outcome(
-                        intent=intent,
-                        reply="मंडी का सरकारी स्रोत अभी configured नहीं है। मैं demo भाव को live भाव नहीं बताऊँगा।",
-                        confidence=0.55,
-                        tool_name="get_mandi_price",
-                    )
                 weather_result = await self.weather.forecast(latitude=location.latitude, longitude=location.longitude)
-                mandi_result = await self.mandi.price(
-                    commodity=entities.commodity,
-                    state=entities.state,
-                    district=entities.district,
-                    market=entities.market,
+                mandi_result = (
+                    await self.mandi.price(
+                        commodity=entities.commodity,
+                        state=entities.state,
+                        district=entities.district,
+                        market=entities.market,
+                    )
+                    if self.mandi is not None
+                    else ToolResult(
+                        ok=False,
+                        error_code="MANDI_PROVIDER_NOT_CONFIGURED",
+                        retryable=False,
+                        data={},
+                    )
                 )
                 parts = []
                 if mandi_result.ok:
@@ -147,7 +149,6 @@ class Orchestrator:
                     parts.append(f"उपलब्ध मौसम जानकारी के अनुसार तापमान {d['temperature_c']}°C है और अगले 24 घंटे में बारिश की अधिकतम संभावना {probability}% है।")
                 else:
                     parts.append("मौसम की जानकारी अभी उपलब्ध नहीं है, इसलिए मैं बारिश की संभावना का अनुमान नहीं दूँगा।")
-                ok = mandi_result.ok or weather_result.ok
                 return self._outcome(
                     intent=intent,
                     reply=" ".join(parts),
