@@ -16,8 +16,8 @@ _HUMAN_TERMS = r"(?:इंसान|व्यक्ति|अधिकारी|
 
 
 def _contains_keyword(text: str, keyword: str) -> bool:
-    pattern = re.escape(keyword).replace(r"\\ ", r"\\s+")
-    return re.search(rf"(?<![\\w]){pattern}(?![\\w])", text, flags=re.UNICODE) is not None
+    pattern = re.escape(keyword).replace(r"\ ", r"\s+")
+    return re.search(rf"(?<![\w]){pattern}(?![\w])", text, flags=re.UNICODE) is not None
 
 
 def _human_request_is_negated(text: str) -> bool:
@@ -29,7 +29,7 @@ def _human_request_is_negated(text: str) -> bool:
 
 
 def classify_intent(message: str) -> Intent:
-    text = re.sub(r"\\s+", " ", message.casefold()).strip()
+    text = re.sub(r"\s+", " ", message.casefold()).strip()
     for intent, keywords in _RULES:
         if intent == "human" and _human_request_is_negated(text):
             continue
