@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import "./home.css";
 
 import { motion } from "motion/react";
@@ -21,7 +22,7 @@ const steps = [["01","Listen","Sarvam speech"],["02","Understand","Intent + enti
 export default function Home() {
   return <main>
     <nav className="nav wrap" aria-label="Primary navigation">
-      <a className="brand" href="/" aria-label="Saathi home"><span className="brand-mark"><AudioLines size={19}/></span>saathi<span className="brand-dot">.</span></a>
+      <Link className="brand" href="/" aria-label="Saathi home"><span className="brand-mark"><AudioLines size={19}/></span>saathi<span className="brand-dot">.</span></Link>
       <div className="nav-right"><span className="status"><i/>Competition build · 2026</span><a className="nav-link" href="/dashboard">Open live demo <ArrowUpRight size={15}/></a></div>
     </nav>
 
@@ -57,6 +58,6 @@ export default function Home() {
     </div></section>
 
     <section className="final-cta wrap"><div><span className="eyebrow"><span className="eyebrow-line"/>READY FOR A REAL QUESTION?</span><h2>Bring Saathi a messy sentence.<br/><em>We’ll show the chain.</em></h2></div><a className="button button-dark" href="/dashboard">Enter the demo <ArrowUpRight size={17}/></a></section>
-    <footer className="footer wrap"><a className="brand" href="/" aria-label="Saathi home"><span className="brand-mark"><AudioLines size={17}/></span>saathi<span className="brand-dot">.</span></a><span>Voice-first · source-backed · consent-led</span><span>© 2026 Saathi</span></footer>
+    <footer className="footer wrap"><Link className="brand" href="/" aria-label="Saathi home"><span className="brand-mark"><AudioLines size={17}/></span>saathi<span className="brand-dot">.</span></Link><span>Voice-first · source-backed · consent-led</span><span>© 2026 Saathi</span></footer>
   </main>;
 }
