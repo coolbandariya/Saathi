@@ -4,7 +4,7 @@ from .schemas import Intent
 
 
 _RULES: tuple[tuple[Intent, tuple[str, ...]], ...] = (
-    ("human", ("human", "volunteer", "person", "इंसान", "व्यक्ति", "अधिकारी", "मानव")),
+    ("human", ("human", "volunteer", "person", "इंसान", "व्यक्ति", "आदमी", "अधिकारी", "मानव")),
     ("task", ("remind", "reminder", "callback", "याद", "रिमाइंड", "बाद में")),
     ("scheme", ("scholarship", "scheme", "yojana", "pension", "subsidy", "छात्रवृत्ति", "योजना", "पेंशन")),
     ("farming", ("mandi", "wheat", "weather", "crop", "farmer", "गेहूं", "मंडी", "मौसम", "बारिश", "फसल", "किसान")),
