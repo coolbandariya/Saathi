@@ -31,7 +31,7 @@ The current operator demo uses clearly labelled simulated mandi data and exposes
 
 ## Development
 
-Requirements: Node.js 20+, Python 3.11+.
+Requirements: Node.js 24+, Python 3.11+.
 
 Frontend: cd frontend && npm install && npm run dev
 
