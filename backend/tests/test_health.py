@@ -54,3 +54,8 @@ def test_readiness_exposes_provider_state():
     assert body["status"] in {"ready", "degraded"}
     assert "provider_contracts" in body
     assert "telephony" in body["provider_contracts"]
+
+
+def test_voice_endpoint_is_provider_gated():
+    response = client.post("/api/v1/voice/turn", files={"audio": ("sample.webm", b"audio", "audio/webm")}, data={"language": "hi"})
+    assert response.status_code in {422, 503, 502}

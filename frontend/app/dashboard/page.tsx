@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
@@ -12,7 +12,14 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type Source = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
 type Result = {
-  reply: string; intent: string; demo: boolean; correlation_id?: string; source?: Source;
+  reply: string;
+  intent: string;
+  demo: boolean;
+  correlation_id?: string;
+  source?: Source;
+  escalated?: boolean;
+  escalation_reason?: string | null;
+  confidence?: number | null;
 };
 
 const scenarios = [
@@ -37,6 +44,9 @@ export default function Dashboard() {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "thinking" | "speaking">("idle");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const [memoryConsent, setMemoryConsent] = useState(false);
   const [reminderConsent, setReminderConsent] = useState(false);
   const [showJudge, setShowJudge] = useState(true);
@@ -62,6 +72,72 @@ export default function Dashboard() {
     setResult(null);
     setJudgeIndex(-1);
     setVoiceState("idle");
+  };
+
+  const toggleVoice = async () => {
+    setVoiceError(null);
+    if (recorderRef.current) {
+      recorderRef.current.stop();
+      setVoiceState("thinking");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setVoiceError("Browser microphone recording is not available here.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        recorderRef.current = null;
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        if (!blob.size) {
+          setVoiceState("idle");
+          setVoiceError("No voice was captured.");
+          return;
+        }
+
+        setLoading(true);
+        setVoiceState("thinking");
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "caller.webm");
+          form.append("language", "hi");
+          form.append("household_id", "demo-household");
+          const response = await fetch(`${API}/api/v1/voice/turn`, { method: "POST", body: form });
+          const body = await response.json();
+          if (!response.ok) throw new Error(body.detail || `Voice request failed: ${response.status}`);
+          setMessage(body.transcript || message);
+          setResult(body);
+          setVoiceState(body.audio_base64 ? "speaking" : "idle");
+
+          if (body.audio_base64) {
+            const bytes = Uint8Array.from(atob(body.audio_base64), (char) => char.charCodeAt(0));
+            const audio = new Audio(URL.createObjectURL(new Blob([bytes], { type: body.audio_mime_type || "audio/wav" })));
+            audio.onended = () => setVoiceState("idle");
+            await audio.play();
+          }
+        } catch (error) {
+          setVoiceState("idle");
+          setVoiceError(error instanceof Error ? error.message : "Voice provider is not configured.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      recorder.start();
+      setVoiceState("listening");
+    } catch {
+      setVoiceError("Microphone permission was denied or unavailable.");
+      setVoiceState("idle");
+    }
   };
 
   const run = async () => {
@@ -205,11 +281,13 @@ export default function Dashboard() {
             <textarea value={message} onChange={(event) => setMessage(event.target.value)} aria-label="Caller request" />
 
             <div className="voice-controls">
-              <button className={`voice-button ${voiceState === "listening" ? "active" : ""}`} onClick={() => setVoiceState(voiceState === "listening" ? "idle" : "listening")} aria-label="Toggle microphone">
-                <Mic2 size={18} /> {voiceState === "listening" ? "Listening…" : "Hold to simulate voice"}
+              <button className={`voice-button ${voiceState === "listening" ? "active" : ""}`} onClick={toggleVoice} aria-label="Toggle microphone" disabled={loading || voiceState === "speaking"}>
+                <Mic2 size={18} /> {voiceState === "listening" ? "Stop recording" : "Start voice"}
               </button>
-              <span><Volume2 size={13} /> TTS state is simulated until a provider is configured</span>
+              <span><Volume2 size={13} /> Real mic → STT → agent → TTS when the voice provider is configured</span>
             </div>
+
+            {voiceError && <div className="voice-error" role="status">{voiceError}</div>}
 
             <button className="run-button" onClick={run} disabled={loading || !message.trim()}>
               <Bot size={18} />{loading ? "Saathi is thinking…" : "Run this conversation"}<ArrowUpRight size={17} />

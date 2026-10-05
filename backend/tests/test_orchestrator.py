@@ -41,3 +41,14 @@ def test_mandi_path_labels_demo_data():
     assert outcome.intent == "farming"
     assert outcome.result is not None and outcome.result.ok
     assert "डेमो" in outcome.reply
+
+
+def test_mandi_without_live_configuration_is_not_presented_as_live(monkeypatch):
+    from app import orchestrator as module
+    class FakeSettings:
+        demo_mode = False
+        mandi_api_key = None
+        mandi_resource_id = None
+    monkeypatch.setattr(module, "get_settings", lambda: FakeSettings())
+    instance = module.Orchestrator()
+    assert instance.mandi is None

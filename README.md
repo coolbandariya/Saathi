@@ -6,9 +6,9 @@ Saathi is a voice-first, multilingual assistance platform designed to make usefu
 
 ## Current status
 
-The active implementation branch now contains the responsive prototype UI, typed FastAPI backend, deterministic routing, agent-orchestration foundation, source-provenance contracts, a live Open-Meteo adapter, telephony/webhook contracts, rate-limited API endpoints, operator control room, automated tests, CI configuration, and production/demo gates.
+The active implementation branch contains the responsive prototype UI, typed FastAPI backend, deterministic routing, source-provenance contracts, a configurable live Open-Meteo adapter, a configurable government OGD/AGMARKNET mandi adapter, provider-gated browser voice (STT → agent → TTS), telephony/webhook contracts, rate-limited endpoints, operator control room, automated tests, CI configuration, and production/demo gates.
 
-The current operator demo uses clearly labelled simulated mandi data and now exposes a judge-mode golden flow, explicit voice states, consent controls, source health, escalation state and correlation IDs. Backend responses expose escalation reason/confidence and readiness reports provider contract state. Live Exotel, Bhashini, Supabase persistence, government scheme APIs, OCR and live mandi integration remain provider-gated work and are not falsely claimed as complete. The UI's microphone/TTS states are simulation states until those providers are configured and tested.
+The current operator demo uses clearly labelled simulated mandi data and now exposes a judge-mode golden flow, explicit voice states, consent controls, source health, escalation state and correlation IDs. Backend responses expose escalation reason/confidence and readiness reports provider contract state. Live Exotel bidirectional phone streaming, Bhashini, Supabase persistence, government scheme APIs, OCR and durable event storage remain provider-gated work and are not falsely claimed as complete. The UI's microphone/TTS states are simulation states until those providers are configured and tested.
 
 **Operator demo:** run the frontend and open /dashboard.
 
@@ -63,3 +63,4 @@ The project is being prepared for JAI 2026 and Tech Eximius 2.0. Submission clai
 ### Backend readiness hardening
 
 The current product branch also includes deterministic intent boundaries, policy-backed escalation decisions, optional caller-provided field location, degraded readiness reporting when provider contracts are absent, and webhook idempotency using a deterministic provider-event/body fingerprint. The webhook store is intentionally in-memory for the demo; production persistence still requires a durable repository such as Supabase.
+\n\n## Real voice and data configuration\n\nSee docs/VOICE_RUNTIME.md, docs/REAL_DATA.md, and docs/JAI_SUBMISSION_CHECKLIST.md before recording a submission demo.\n
