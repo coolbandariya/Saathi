@@ -35,3 +35,39 @@ def test_voice_bridge_uses_injected_pipeline():
         assert ws.sent
 
     asyncio.run(run())
+
+
+def test_voice_bridge_flushes_on_silence_before_max_turn():
+    async def run():
+        import base64
+
+        speech = b"\x10\x00" * 4000
+        silence = b"\x00\x00" * 5200
+        ws = FakeWS([
+            json.dumps({"event": "start", "start": {
+                "stream_sid": "MZ1", "call_sid": "CA1",
+                "media_format": {"sample_rate": "8000"},
+            }}),
+            json.dumps({"event": "media", "media": {"payload": base64.b64encode(speech).decode()}}),
+            json.dumps({"event": "media", "media": {"payload": base64.b64encode(silence).decode()}}),
+            json.dumps({"event": "stop"}),
+        ])
+        calls = []
+
+        async def stt(audio, rate):
+            calls.append(("stt", len(audio), rate))
+            return "नमस्ते"
+
+        async def respond(text):
+            calls.append(("llm", text))
+            return "नमस्ते"
+
+        async def tts(text, rate):
+            calls.append(("tts", text, rate))
+            return b"reply"
+
+        await run_exotel_session(ws, transcribe=stt, respond=respond, synthesize=tts)
+        assert calls[0][0] == "stt"
+        assert calls[0][1] < 8_000 * 2 * 2
+
+    asyncio.run(run())
