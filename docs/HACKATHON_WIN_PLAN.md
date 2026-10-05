@@ -4,7 +4,7 @@ Updated: 2026-10-06
 
 ## Strategic position
 
-**Research checkpoint: 2026-10-06.** JAI is the hard deadline: Unstop currently lists registration by 10 Oct 2026 11:59 PM IST and Round 1 project/prototype submission by 15 Oct; the official summit confirms the offline event is 30–31 Oct. Tech Eximius 2.0 currently lists 2–4 members, a mandatory GoPass verification task, a maximum-six-slide PPT, and an 8-hour offline final. Its public listings currently show conflicting registration deadlines, so the team should treat the deadline displayed in its active Unstop submission flow as authoritative and submit well before it. citeturn3view0turn4search0
+**Research checkpoint: 2026-10-06.** JAI is the hard deadline: Unstop currently lists registration by 10 Oct 2026 11:59 PM IST and Round 1 project/prototype submission by 15 Oct; the official summit confirms the offline event is 30–31 Oct. Tech Eximius 2.0 currently lists 2–4 members, a mandatory GoPass verification task, a maximum-six-slide PPT, and an 8-hour offline final. Its public listings currently show conflicting registration deadlines, so the team should treat the deadline displayed in its active Unstop submission flow as authoritative and submit well before it.
 
 Saathi should enter both competitions with the same core product, but tell two different stories.
 
@@ -171,9 +171,9 @@ Never claim:
 
 ## Judge-winning upgrades discovered in current research
 
-1. **Make the agent visibly agentic, not merely routed.** Show a planner/tool decision, tool execution, evidence returned, and response policy. Gemini Interactions is now GA and explicitly supports structured tool calls; keep execution in Saathi so the model remains a planner rather than the source of truth. citeturn0search0turn0search2
-2. **Make voice genuinely real before claiming phone intelligence.** Sarvam Realtime STT supports partial/final transcripts, server VAD, `speech_start`/`speech_end`, and `flush`; Saaras v4 supports keyterm prompting. Exotel AgentStream supports bidirectional PCM and `clear` for barge-in. citeturn2search14turn2search8turn2search5
-3. **Make the farming story unusually trustworthy.** The government mandi dataset is daily-granularity AGMARKNET data, so Saathi should say “latest government-reported market observation” and expose the observation date—not imply tick-level or guaranteed same-day availability. citeturn2search0turn2search2
+1. **Make the agent visibly agentic, not merely routed.** Show a planner/tool decision, tool execution, evidence returned, and response policy. Gemini Interactions is now GA and explicitly supports structured tool calls; keep execution in Saathi so the model remains a planner rather than the source of truth.
+2. **Make voice genuinely real before claiming phone intelligence.** Sarvam Realtime STT supports partial/final transcripts, server VAD, `speech_start`/`speech_end`, and `flush`; Saaras v4 supports keyterm prompting. Exotel AgentStream supports bidirectional PCM and `clear` for barge-in.
+3. **Make the farming story unusually trustworthy.** The government mandi dataset is daily-granularity AGMARKNET data, so Saathi should say “latest government-reported market observation” and expose the observation date—not imply tick-level or guaranteed same-day availability.
 4. **Turn evaluation into a competitive asset.** Report intent, entity, tool-selection, grounded-answer, escalation, WER, first-transcript, first-audio and p50/p95 turn latency with provider/model versions and test-set date.
 5. **Design for judge interruption.** Every demo step needs a fallback: preloaded demo route if provider fails, visible LIVE/DEMO state, and a 20-second deterministic “proof mode” that never fabricates a live answer.
 
