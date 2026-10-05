@@ -4,10 +4,16 @@ from pydantic import BaseModel, Field
 Intent = Literal["scheme", "farming", "document", "task", "general", "human"]
 EscalationReason = Literal["low_confidence", "explicit_human_request", "provider_failure", "safety_boundary"]
 
+class LocationContext(BaseModel):
+    latitude: float = Field(ge=-90.0, le=90.0)
+    longitude: float = Field(ge=-180.0, le=180.0)
+    label: str | None = Field(default=None, max_length=120)
+
 class ConversationRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     household_id: str | None = Field(default=None, min_length=1, max_length=120)
     language: str = Field(default="hi", min_length=2, max_length=20)
+    location: LocationContext | None = None
 
 class SourceResponse(BaseModel):
     name: str
