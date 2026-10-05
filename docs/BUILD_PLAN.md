@@ -14,11 +14,12 @@ The remaining work is deliberately ordered around one reliable vertical slice ra
 - [x] Deterministic Hindi/Hinglish intent baseline
 - [x] Source provenance + demo/live labelling
 - [x] Consent and human-escalation UI
-- [ ] Green backend + frontend CI on the final commit
+- [ ] Green backend + frontend CI on the final commit (GitHub Actions run visibility is currently unavailable through the connected GitHub API)
 - [ ] Run the browser voice loop with real Sarvam credentials
 - [ ] Query live Open-Meteo and capture provenance
-- [ ] Configure a real OGD/AGMARKNET resource and verify Sonipat/Wheat records
-- [ ] Expand the evaluation set and measure speech/intent/tool accuracy and latency
+- [x] Pin and schema-correct the current OGD/AGMARKNET resource adapter for Sonipat/Wheat; live credential smoke test remains environment-gated
+- [x] Expand the deterministic intent evaluation set to 120 synthetic Hindi/Hinglish cases
+- [ ] Measure live speech WER, tool-selection accuracy, grounded-answer correctness and end-to-end latency with provider credentials
 - [ ] Record the exact submitted build and preserve Git evidence
 
 ## P1 — Make the vertical slice production-shaped
