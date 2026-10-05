@@ -171,6 +171,8 @@ async def voice_turn(
     if latitude is not None or longitude is not None:
         if latitude is None or longitude is None:
             raise HTTPException(status_code=422, detail="location_requires_latitude_and_longitude")
+        if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+            raise HTTPException(status_code=422, detail="invalid_location_coordinates")
         location = LocationContext(latitude=latitude, longitude=longitude, label=location_label)
     try:
         turn = await voice_gateway.handle(raw, language=language, household_id=household_id, location=location)
