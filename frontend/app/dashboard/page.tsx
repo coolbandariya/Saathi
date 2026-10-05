@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
   CloudRain, FileText, Languages, MapPin, Mic2, PhoneCall, Play,
-  ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap
+  ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap, type LucideIcon
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -28,6 +28,14 @@ const scenarios = [
   { id: "scheme", label: "Yojana", text: "मेरे लिए किसान की सरकारी योजना बताओ", icon: ShieldCheck },
   { id: "human", label: "Human help", text: "मुझे किसी इंसान से बात करनी है", icon: UserRound },
 ] as const;
+
+const flowSteps: [string, string, string, LucideIcon][] = [
+  ["01", "Listen", "Voice / missed call", Mic2],
+  ["02", "Understand", "Language + intent", Languages],
+  ["03", "Act", "Specialist + tools", Bot],
+  ["04", "Remember", "Consent-based memory", ShieldCheck],
+  ["05", "Escalate", "Human when needed", UserRound],
+];
 
 const judgeSteps = [
   ["call", "Missed call arrives", "Voice channel", PhoneCall],
@@ -382,7 +390,7 @@ export default function Dashboard() {
         </section>
 
         <section className="flow-strip">
-          {[["01","Listen","Voice / missed call",Mic2],["02","Understand","Language + intent",Languages],["03","Act","Specialist + tools",Bot],["04","Remember","Consent-based memory",ShieldCheck],["05","Escalate","Human when needed",UserRound]].map(([num,title,sub,Icon], i) => (
+          {flowSteps.map(([num, title, sub, Icon], i) => (
             <div className="flow-step" key={num}><span>{num}</span><Icon size={17} /><div><strong>{title}</strong><small>{sub}</small></div>{i < 4 && <ArrowUpRight size={14} />}</div>
           ))}
         </section>
