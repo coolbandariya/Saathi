@@ -282,7 +282,7 @@ export default function Dashboard() {
 
             <div className="voice-controls">
               <button className={`voice-button ${voiceState === "listening" ? "active" : ""}`} onClick={toggleVoice} aria-label="Toggle microphone">
-                <Mic2 size={18} /> {voiceState === "listening" ? "Listening…" : "Hold to simulate voice"}
+                <Mic2 size={18} /> {voiceState === "listening" ? "Stop recording" : "Start voice"}
               </button>
               <span><Volume2 size={13} /> Real mic → STT → agent → TTS when the voice provider is configured</span>
             </div>
