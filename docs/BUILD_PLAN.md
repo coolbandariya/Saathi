@@ -9,7 +9,7 @@
 - [ ] Supabase migrations reviewed and tested
 
 ## Milestone 2 — Core agent
-- [ ] Provider interfaces
+- [x] Provider interfaces
 - [ ] LLM adapter
 - [ ] LangGraph orchestration
 - [ ] Scheme catalogue and deterministic eligibility rules
@@ -34,8 +34,15 @@
 - [ ] Assignment and resolution workflow
 
 ## Milestone 6 — Hardening
-- [ ] RLS/security tests
-- [ ] Consent tests
+- [ ] RLS/security tests (database-backed)
+- [x] Consent decision unit tests
 - [ ] Integration tests
 - [ ] End-to-end demo test
 - [ ] Deployment verification
+
+
+## Security foundation added
+- Intent normalization is covered by regression tests.
+- Consent decisions reject missing grants and invalid future timestamps.
+- Webhook HMAC verification and duplicate-event rejection primitives are covered by unit tests.
+- These are building blocks only; production webhook idempotency must be persisted in the database and use the exact provider signature contract.
