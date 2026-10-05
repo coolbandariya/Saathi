@@ -17,3 +17,38 @@ def test_open_meteo_mapping(monkeypatch):
     result=asyncio.run(OpenMeteoWeatherTool().forecast(latitude=28.99,longitude=77.02))
     assert result.ok
     assert result.data["next_24h_rain_probability_max"] == 30
+
+
+class MandiResponse:
+    def raise_for_status(self): pass
+    def json(self):
+        return {
+            "records": [{
+                "commodity": "Rice",
+                "state": "Haryana",
+                "district": "Sonipat",
+                "market": "Sonipat",
+                "Modal_Price": "2400",
+            }]
+        }
+
+
+class MandiClient:
+    async def __aenter__(self): return self
+    async def __aexit__(self, *args): pass
+    async def get(self, *args, **kwargs): return MandiResponse()
+
+
+def test_mandi_rejects_entity_mismatch(monkeypatch):
+    import app.http_tools as module
+    monkeypatch.setattr(module.httpx, "AsyncClient", lambda **kwargs: MandiClient())
+    from app.http_tools import DataGovMandiTool
+    result = asyncio.run(
+        DataGovMandiTool(api_key="test", resource_id="resource").price(
+            commodity="Wheat",
+            state="Haryana",
+            district="Sonipat",
+        )
+    )
+    assert not result.ok
+    assert result.error_code == "MANDI_ENTITY_MISMATCH"
