@@ -82,6 +82,8 @@ def test_voice_bridge_clears_playback_when_caller_barges_in():
             json.dumps({"event": "start", "start": {"stream_sid": "MZ1", "call_sid": "CA1", "media_format": {"sample_rate": "8000"}}}),
             json.dumps({"event": "media", "media": {"payload": base64.b64encode(speech).decode()}}),
             json.dumps({"event": "media", "media": {"payload": base64.b64encode(silence).decode()}}),
+            json.dumps({"event": "media", "media": {"payload": base64.b64encode(silence).decode()}}),
+            json.dumps({"event": "media", "media": {"payload": base64.b64encode(silence).decode()}}),
             json.dumps({"event": "media", "media": {"payload": base64.b64encode(speech).decode()}}),
             json.dumps({"event": "stop"}),
         ])
