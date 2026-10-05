@@ -8,6 +8,8 @@ The remaining work before Supabase is intentionally narrow: run the configured p
 
 ## P0 — Non-Supabase completion
 
+**Current state:** engineering gates are green, but provider-backed execution and submission evidence are still required. Do not move to Supabase until the real vertical slice is captured.
+
 - [x] Responsive landing page + operator dashboard
 - [x] Browser microphone capture path
 - [x] Deterministic Hindi/Hinglish intent baseline
@@ -22,14 +24,17 @@ The remaining work before Supabase is intentionally narrow: run the configured p
 - [x] Bounded-turn phone STT → orchestrator → TTS adapter
 - [x] Gemini structured tool-call boundary with allow-listed tool validation
 - [x] Frontend lint/typecheck/build and dependency-audit workflow
-- [ ] Run provider-backed browser voice with real Sarvam credentials
+- [ ] Run provider-backed browser voice with real Sarvam credentials and record transcript/audio latency
 - [ ] Query live Open-Meteo and capture provenance in the submitted environment
-- [ ] Query live OGD/AGMARKNET and verify market/date/entity selection
+- [ ] Query live OGD/AGMARKNET and verify market/date/entity selection; report it as a daily government observation
 - [ ] Run a real Exotel call against a public `wss://` deployment
 - [ ] Measure speech WER, intent/entity/tool accuracy, grounded-answer correctness and end-to-end latency
 - [ ] Record the exact submitted build/commit and preserve Git evidence
+- [ ] Produce one reproducible judge-mode runbook that works even if an external provider temporarily fails
 
 ## P1 — Persistence and human workflow
+
+**Do not start P1 until the JAI prototype submission is frozen and the provider-backed vertical slice is demonstrated.**
 
 After the non-Supabase release gate passes:
 
