@@ -1,13 +1,15 @@
 # Demo Contract
 
-The hackathon demo must prove a complete chain rather than show disconnected screens.
+The browser demo now exercises the FastAPI conversation boundary rather than showing a fake alert.
 
-1. User initiates a voice conversation.
-2. Speech is transcribed and the request is routed.
-3. One verified scheme workflow returns source-backed information.
-4. A missing document/task is persisted with consent.
-5. The user can resume the task later.
-6. A proactive callback is simulated or executed only with explicit outbound-call consent.
-7. An edge case escalates to a volunteer with transcript and context.
+The final hackathon golden path should prove:
 
-Anything not backed by a real integration must be visibly labeled DEMO or SIMULATED.
+1. A user starts with a Hindi request.
+2. The request is routed to a specialist intent.
+3. A factual tool returns source/timestamp metadata.
+4. A consent-gated task is created in the persistence layer.
+5. The same household resumes the task.
+6. A due task becomes callback-eligible only when outbound consent and quiet-hour checks pass.
+7. An uncertain/unsupported case becomes a volunteer support case with transcript/context.
+
+Anything not backed by a live provider must be labeled DEMO or SIMULATED.
