@@ -2,55 +2,302 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowLeft, ArrowUpRight, Bot, CheckCircle2, Clock3, CloudRain, Languages, Mic2, PhoneCall, ShieldCheck, Sparkles, UserRound, Wifi, Wheat } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
+  CloudRain, FileText, Languages, MapPin, Mic2, PhoneCall, Play,
+  ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap
+} from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type Result = { reply:string; intent:string; demo:boolean; correlation_id?:string; source?:{name:string;url:string;retrieved_at:string;freshness_note?:string|null} };
-const quickCalls = [
-  ["Mandi bhav","गेहूं का मंडी भाव क्या है?",Wheat],
-  ["Weather","कल बारिश होगी?",CloudRain],
-  ["Yojana","मेरे लिए किसान की सरकारी योजना बताओ",ShieldCheck],
-  ["Human help","मुझे किसी इंसान से बात करनी है",UserRound],
+type Source = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
+type Result = {
+  reply: string; intent: string; demo: boolean; correlation_id?: string; source?: Source;
+};
+
+const scenarios = [
+  { id: "mandi", label: "Mandi bhav", text: "सोनीपत मंडी में गेहूं का आज क्या भाव है?", icon: Wheat },
+  { id: "weather", label: "Weather", text: "कल बारिश होगी?", icon: CloudRain },
+  { id: "scheme", label: "Yojana", text: "मेरे लिए किसान की सरकारी योजना बताओ", icon: ShieldCheck },
+  { id: "human", label: "Human help", text: "मुझे किसी इंसान से बात करनी है", icon: UserRound },
 ] as const;
 
-export default function Dashboard(){
- const [message,setMessage]=useState(quickCalls[0][1]);
- const [result,setResult]=useState<Result|null>(null);
- const [loading,setLoading]=useState(false);
- const run=async()=>{
-   setLoading(true);
-   try{
-     const r=await fetch(`${API}/api/v1/agent`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,language:"hi",household_id:"demo-household"})});
-     setResult(await r.json());
-   }catch{setResult({reply:"Backend se connection nahi ho paaya. Demo ko galat live result nahi dikhana chahiye.",intent:"general",demo:true});}
-   finally{setLoading(false);}
- };
- const trace=useMemo(()=>[
-   ["01","Call / request received",true],["02","Language + intent detected",true],["03","Specialist agent selected",!!result],["04","Verified tool boundary",!!result],["05","Source + timestamp attached",!!result?.source],["06","Household memory",false],["07","Human fallback",result?.intent==="human"]
- ],[result]);
- return <main className="command-shell">
-  <nav className="command-nav"><a href="/" className="command-brand"><span><Mic2 size={17}/></span>saathi<span className="brand-dot">.</span></a><div className="command-nav-meta"><span className="connection"><i/> Demo systems ready</span><span className="nav-divider"/><span className="operator"><UserRound size={14}/> Operator</span></div></nav>
-  <div className="command-wrap">
-   <header className="command-header"><div><div className="eyebrow"><span className="eyebrow-line"/> SAATHI COMMAND CENTER</div><h1>From voice to <em>action.</em></h1><p>See how one caller request moves through language, specialist agents, verified tools and human fallback.</p></div><div className="header-badges"><span><Wifi size={13}/> API ready</span><span><ShieldCheck size={13}/> Consent-led</span><span><Languages size={13}/> Hindi-first</span></div></header>
-   <section className="status-grid">
-    <article className="metric-card accent"><div className="metric-icon"><PhoneCall size={18}/></div><div><small>VOICE CHANNEL</small><strong>Missed call → Saathi</strong><p>Provider-gated · Exotel adapter ready</p></div></article>
-    <article className="metric-card"><div className="metric-icon"><Bot size={18}/></div><div><small>ORCHESTRATOR</small><strong>6 specialist paths</strong><p>Deterministic routing + provider boundary</p></div></article>
-    <article className="metric-card"><div className="metric-icon"><Clock3 size={18}/></div><div><small>TRACE ID</small><strong>{result?.correlation_id || "Waiting for call"}</strong><p>Propagated across the API request</p></div></article>
-   </section>
-   <section className="workspace">
-    <div className="caller-panel">
-     <div className="panel-head"><div><span className="panel-kicker">CALLER SIMULATOR</span><h2>What would you ask Saathi?</h2></div><span className="demo-tag"><i/> DEMO</span></div>
-     <div className="caller-context"><div className="caller-avatar"><Mic2 size={23}/></div><div><strong>Unknown caller</strong><span>Hindi · Sonipat, Haryana</span></div><span className="call-state">READY</span></div>
-     <textarea value={message} onChange={e=>setMessage(e.target.value)} aria-label="Caller request"/>
-     <div className="quick-row">{quickCalls.map(([label,text,Icon])=><button key={label} onClick={()=>setMessage(text)}><Icon size={15}/>{label}</button>)}</div>
-     <button className="run-button" onClick={run} disabled={loading}><Mic2 size={18}/>{loading?"Saathi is thinking…":"Run this conversation"}<ArrowUpRight size={17}/></button>
-     {result&&<motion.div className="answer-card" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}}><div className="answer-label"><span><Bot size={15}/> SAATHI RESPONSE</span><b>{result.intent}</b></div><p>{result.reply}</p>{result.source&&<div className="source-row"><CheckCircle2 size={15}/><div><strong>{result.source.name}</strong><span>{result.source.freshness_note||"Provider result retrieved with timestamp."}</span></div></div>}</motion.div>}
-    </div>
-    <aside className="trace-panel"><div className="panel-head dark-head"><div><span className="panel-kicker">AGENT TRACE</span><h2>Every step is inspectable.</h2></div><Sparkles size={19}/></div><div className="trace-list">{trace.map(([num,label,active])=><div className={`trace-item ${active?"active":""}`} key={num}><span className="trace-num">{num}</span><span className="trace-line"/><span className="trace-label">{label}</span>{active?<CheckCircle2 size={15}/>:<span className="pending-dot"/>}</div>)}</div><div className="privacy-box"><ShieldCheck size={17}/><div><strong>No invented facts.</strong><p>Tool-backed answers carry provenance. Demo data stays visibly marked.</p></div></div></aside>
-   </section>
-   <section className="flow-strip">{[["01","Listen","Voice / missed call",Mic2],["02","Understand","Language + intent",Languages],["03","Act","Specialist + tools",Bot],["04","Remember","Consent-based memory",ShieldCheck],["05","Escalate","Human when needed",UserRound]].map(([num,title,sub,Icon],i)=><div className="flow-step" key={num}><span>{num}</span><Icon size={17}/><div><strong>{title}</strong><small>{sub}</small></div>{i<4&&<ArrowUpRight size={14}/>}</div>)}</section>
-   <footer className="command-footer"><span>SAATHI · VOICE-FIRST ACCESS</span><span>Prototype control room · 2026</span><a href="/"><ArrowLeft size={14}/> Back to product</a></footer>
-  </div>
- </main>
+const judgeSteps = [
+  ["call", "Missed call arrives", "Voice channel", PhoneCall],
+  ["lang", "Hindi understood", "Language + intent", Languages],
+  ["agent", "Farming agent selected", "Specialist routing", Bot],
+  ["tool", "Mandi source checked", "Verified tool", Wheat],
+  ["memory", "Context remembered", "Consent-gated memory", ShieldCheck],
+  ["fallback", "Human fallback ready", "Escalation", UserRound],
+] as const;
+
+export default function Dashboard() {
+  const [message, setMessage] = useState(scenarios[0].text);
+  const [scenario, setScenario] = useState("mandi");
+  const [result, setResult] = useState<Result | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [voiceState, setVoiceState] = useState<"idle" | "listening" | "thinking" | "speaking">("idle");
+  const [memoryConsent, setMemoryConsent] = useState(false);
+  const [reminderConsent, setReminderConsent] = useState(false);
+  const [showJudge, setShowJudge] = useState(true);
+  const [judgeIndex, setJudgeIndex] = useState(-1);
+  const [expanded, setExpanded] = useState<string | null>("memory");
+
+  const selectedScenario = scenarios.find((item) => item.id === scenario) ?? scenarios[0];
+
+  const trace = useMemo(() => [
+    ["01", "Call / request received", true],
+    ["02", "Language + intent detected", true],
+    ["03", "Specialist agent selected", !!result],
+    ["04", "Verified tool boundary", !!result],
+    ["05", "Source + timestamp attached", !!result?.source],
+    ["06", "Household memory", memoryConsent && !!result],
+    ["07", "Human fallback", result?.intent === "human"],
+  ] as const, [result, memoryConsent]);
+
+  const selectScenario = (id: string) => {
+    const item = scenarios.find((entry) => entry.id === id) ?? scenarios[0];
+    setScenario(id);
+    setMessage(item.text);
+    setResult(null);
+    setJudgeIndex(-1);
+    setVoiceState("idle");
+  };
+
+  const run = async () => {
+    setLoading(true);
+    setVoiceState("thinking");
+    try {
+      const response = await fetch(`${API}/api/v1/agent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, language: "hi", household_id: "demo-household" }),
+      });
+      if (!response.ok) throw new Error(`Agent request failed: ${response.status}`);
+      setResult(await response.json());
+      setVoiceState("speaking");
+    } catch {
+      setResult({
+        reply: "Backend se connection nahi ho paaya. Saathi live result invent nahi karega — provider status check karein.",
+        intent: "general",
+        demo: true,
+      });
+      setVoiceState("idle");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startJudge = () => {
+    setShowJudge(true);
+    setResult(null);
+    setJudgeIndex(0);
+    setVoiceState("listening");
+  };
+
+  const nextJudgeStep = () => {
+    if (judgeIndex < judgeSteps.length - 1) {
+      setJudgeIndex((value) => value + 1);
+      if (judgeIndex + 1 === 2) setVoiceState("thinking");
+      if (judgeIndex + 1 === 3) setVoiceState("speaking");
+    } else {
+      setVoiceState("idle");
+      setJudgeIndex(-1);
+    }
+  };
+
+  return (
+    <main className="command-shell">
+      <nav className="command-nav">
+        <a href="/" className="command-brand">
+          <span><Mic2 size={17} /></span>saathi<span className="brand-dot">.</span>
+        </a>
+        <div className="command-nav-meta">
+          <span className="connection"><i /> Demo systems ready</span>
+          <span className="nav-divider" />
+          <span className="operator"><UserRound size={14} /> Operator</span>
+        </div>
+      </nav>
+
+      <div className="command-wrap">
+        <header className="command-header">
+          <div>
+            <div className="eyebrow"><span className="eyebrow-line" /> SAATHI COMMAND CENTER</div>
+            <h1>From voice to <em>action.</em></h1>
+            <p>Inspect the complete caller journey: language, specialist agents, verified tools, consent-aware memory and human fallback.</p>
+          </div>
+          <div className="header-badges">
+            <span><Zap size={13} /> API ready</span>
+            <span><ShieldCheck size={13} /> Consent-led</span>
+            <span><Languages size={13} /> Hindi-first</span>
+          </div>
+        </header>
+
+        {showJudge && (
+          <section className="judge-panel">
+            <div className="judge-copy">
+              <div className="panel-kicker">JUDGE MODE · GOLDEN DEMO</div>
+              <h2>One call. One visible chain.</h2>
+              <p>Run the recommended 60-second story: missed call → Hindi → farming agent → verified mandi/weather tools → memory → human fallback.</p>
+              <button className="judge-start" onClick={startJudge}>
+                <Play size={15} fill="currentColor" /> Start golden demo
+              </button>
+            </div>
+            <div className="judge-timeline">
+              {judgeSteps.map(([id, title, sub, Icon], index) => {
+                const active = judgeIndex === index;
+                const done = judgeIndex > index;
+                return (
+                  <button className={`judge-step ${active ? "active" : ""} ${done ? "done" : ""}`} key={id} onClick={() => setJudgeIndex(index)}>
+                    <span>{done ? <CheckCircle2 size={14} /> : <Icon size={14} />}</span>
+                    <strong>{title}</strong>
+                    <small>{sub}</small>
+                  </button>
+                );
+              })}
+            </div>
+            {judgeIndex >= 0 && (
+              <div className="judge-live">
+                <span className="voice-pulse"><Mic2 size={17} /></span>
+                <div><strong>{judgeSteps[judgeIndex][1]}</strong><small>{judgeSteps[judgeIndex][2]}</small></div>
+                <button onClick={nextJudgeStep}>{judgeIndex === judgeSteps.length - 1 ? "Finish" : "Next"} <ArrowRight size={14} /></button>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section className="status-grid">
+          <article className="metric-card accent">
+            <div className="metric-icon"><PhoneCall size={18} /></div>
+            <div><small>VOICE CHANNEL</small><strong>Missed call → Saathi</strong><p>Provider-gated · Exotel adapter ready</p></div>
+          </article>
+          <article className="metric-card">
+            <div className="metric-icon"><Bot size={18} /></div>
+            <div><small>ORCHESTRATOR</small><strong>Specialist routing</strong><p>Deterministic intent + tool boundary</p></div>
+          </article>
+          <article className="metric-card">
+            <div className="metric-icon"><Sparkles size={18} /></div>
+            <div><small>VOICE STATE</small><strong>{voiceState === "idle" ? "Ready" : voiceState === "listening" ? "Listening" : voiceState === "thinking" ? "Thinking" : "Speaking"}</strong><p>Live adapter state · demo-safe</p></div>
+          </article>
+        </section>
+
+        <section className="workspace">
+          <div className="caller-panel">
+            <div className="panel-head">
+              <div><span className="panel-kicker">CALLER SIMULATOR</span><h2>What would you ask Saathi?</h2></div>
+              <span className="demo-tag"><i /> DEMO</span>
+            </div>
+
+            <div className="caller-context">
+              <div className={`caller-avatar ${voiceState !== "idle" ? "pulse" : ""}`}><Mic2 size={23} /></div>
+              <div><strong>Unknown caller</strong><span>Hindi · Sonipat district</span></div>
+              <span className={`call-state ${voiceState !== "idle" ? "busy" : ""}`}>{voiceState.toUpperCase()}</span>
+            </div>
+
+            <div className="scenario-tabs" role="tablist" aria-label="Demo scenarios">
+              {scenarios.map(([item]) => null)}
+              {scenarios.map(({ id, label, icon: Icon }) => (
+                <button key={id} className={scenario === id ? "selected" : ""} onClick={() => selectScenario(id)}>
+                  <Icon size={14} />{label}
+                </button>
+              ))}
+            </div>
+
+            <textarea value={message} onChange={(event) => setMessage(event.target.value)} aria-label="Caller request" />
+
+            <div className="voice-controls">
+              <button className={`voice-button ${voiceState === "listening" ? "active" : ""}`} onClick={() => setVoiceState(voiceState === "listening" ? "idle" : "listening")} aria-label="Toggle microphone">
+                <Mic2 size={18} /> {voiceState === "listening" ? "Listening…" : "Hold to simulate voice"}
+              </button>
+              <span><Volume2 size={13} /> TTS state is simulated until a provider is configured</span>
+            </div>
+
+            <button className="run-button" onClick={run} disabled={loading || !message.trim()}>
+              <Bot size={18} />{loading ? "Saathi is thinking…" : "Run this conversation"}<ArrowUpRight size={17} />
+            </button>
+
+            {result && (
+              <motion.div className="answer-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="answer-label"><span><Bot size={15} /> SAATHI RESPONSE</span><b>{result.intent}</b></div>
+                <p>{result.reply}</p>
+                {result.source ? (
+                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span></div></div>
+                ) : (
+                  <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
+                )}
+                {result.correlation_id && <div className="correlation-line">Correlation ID · <code>{result.correlation_id}</code></div>}
+              </motion.div>
+            )}
+          </div>
+
+          <aside className="trace-panel">
+            <div className="panel-head dark-head">
+              <div><span className="panel-kicker">AGENT TRACE</span><h2>Every step is inspectable.</h2></div>
+              <Sparkles size={19} />
+            </div>
+            <div className="trace-list">
+              {trace.map(([num, label, active]) => (
+                <div className={`trace-item ${active ? "active" : ""}`} key={num}>
+                  <span className="trace-num">{num}</span><span className="trace-line" /><span className="trace-label">{label}</span>
+                  {active ? <CheckCircle2 size={15} /> : <span className="pending-dot" />}
+                </div>
+              ))}
+            </div>
+            <div className="privacy-box"><ShieldCheck size={17} /><div><strong>No invented facts.</strong><p>Tool-backed answers carry provenance. Demo data stays visibly marked.</p></div></div>
+          </aside>
+        </section>
+
+        <section className="context-grid">
+          <article className="context-card">
+            <div className="context-title"><div><span className="panel-kicker">FIELD CONTEXT</span><h3>Where should Saathi look?</h3></div><MapPin size={18} /></div>
+            <div className="location-row"><div className="map-placeholder"><MapPin size={23} /><span>FIELD CONTEXT</span></div><div><strong>Sonipat district</strong><p>Location is shown as caller-provided/demo context. No browser GPS is claimed.</p><span className="source-status"><i /> Location source · contextual</span></div></div>
+          </article>
+
+          <article className="context-card">
+            <div className="context-title"><div><span className="panel-kicker">SOURCE HEALTH</span><h3>What can we trust?</h3></div><CheckCircle2 size={18} /></div>
+            <div className="health-list">
+              <div><span><Wheat size={14} /> Mandi tool</span><b className="demo-badge">DEMO / API-ready</b></div>
+              <div><span><CloudRain size={14} /> Weather tool</span><b className="live-badge">Open-Meteo adapter</b></div>
+              <div><span><ShieldCheck size={14} /> Scheme rules</span><b className="live-badge">Deterministic</b></div>
+            </div>
+          </article>
+        </section>
+
+        <section className="consent-card">
+          <div className="context-title"><div><span className="panel-kicker">HOUSEHOLD MEMORY</span><h3>Remember only with permission.</h3></div><ShieldCheck size={18} /></div>
+          <p className="consent-intro">Saathi separates useful continuity from silent surveillance. Each future memory/reminder capability has its own consent boundary.</p>
+          <div className="consent-options">
+            <button className={`consent-option ${memoryConsent ? "on" : ""}`} onClick={() => setMemoryConsent((value) => !value)}>
+              <span className="toggle">{memoryConsent ? <CheckCircle2 size={14} /> : <X size={14} />}</span>
+              <div><strong>Household memory</strong><small>{memoryConsent ? "Consented for this demo household" : "Not enabled"}</small></div>
+              <ChevronDown size={14} />
+            </button>
+            <button className={`consent-option ${reminderConsent ? "on" : ""}`} onClick={() => setReminderConsent((value) => !value)}>
+              <span className="toggle">{reminderConsent ? <CheckCircle2 size={14} /> : <X size={14} />}</span>
+              <div><strong>Outbound reminders</strong><small>{reminderConsent ? "Consent recorded in demo state" : "Not enabled"}</small></div>
+              <ChevronDown size={14} />
+            </button>
+          </div>
+          <div className="consent-note"><ShieldCheck size={14} /> In production, consent, opt-out, quiet hours and deletion must be persisted server-side.</div>
+        </section>
+
+        <section className="fallback-card">
+          <div className="fallback-icon"><UserRound size={22} /></div>
+          <div className="fallback-copy"><span className="panel-kicker">HUMAN FALLBACK</span><h3>When confidence drops, hand the call to a person.</h3><p>Saathi can package the conversation context for a volunteer instead of forcing the model to answer beyond its safety or confidence boundary.</p></div>
+          <div className="fallback-status"><span><i /> Ready</span><small>Policy threshold · 0.65</small></div>
+        </section>
+
+        <section className="flow-strip">
+          {[["01","Listen","Voice / missed call",Mic2],["02","Understand","Language + intent",Languages],["03","Act","Specialist + tools",Bot],["04","Remember","Consent-based memory",ShieldCheck],["05","Escalate","Human when needed",UserRound]].map(([num,title,sub,Icon], i) => (
+            <div className="flow-step" key={num}><span>{num}</span><Icon size={17} /><div><strong>{title}</strong><small>{sub}</small></div>{i < 4 && <ArrowUpRight size={14} />}</div>
+          ))}
+        </section>
+
+        <footer className="command-footer">
+          <span>SAATHI · VOICE-FIRST ACCESS</span><span>Prototype control room · 2026</span>
+          <a href="/"><ArrowLeft size={14} /> Back to product</a>
+        </footer>
+      </div>
+    </main>
+  );
 }
