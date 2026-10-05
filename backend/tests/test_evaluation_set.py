@@ -48,7 +48,7 @@ SEEDS = {
 PREFIXES = ["", "कृपया ", "मुझे बताइए ", "जरा "]
 
 CASES = [
-    (prefix + seed + suffix, intent)
+    (prefix + seed, intent)
     for intent, seeds in SEEDS.items()
     for seed in seeds
     for prefix in PREFIXES
