@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [expanded, setExpanded] = useState<string | null>("memory");
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
+  const [followUpStatus, setFollowUpStatus] = useState<"idle" | "pending" | "due">("idle");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -201,6 +202,14 @@ export default function Dashboard() {
     setResult(null);
     setJudgeIndex(0);
     setVoiceState("listening");
+  };
+
+  const createFollowUpSimulation = () => {
+    setFollowUpStatus("pending");
+  };
+
+  const simulateThreeDaysLater = () => {
+    if (followUpStatus === "pending") setFollowUpStatus("due");
   };
 
   const nextJudgeStep = () => {
@@ -389,6 +398,26 @@ export default function Dashboard() {
             </button>
           </div>
           <div className="consent-note"><ShieldCheck size={14} /> In production, consent, opt-out, quiet hours and deletion must be persisted server-side.</div>
+        </section>
+
+        <section className="simulation-card" aria-labelledby="simulation-title">
+          <div className="simulation-copy">
+            <span className="panel-kicker">OPERATOR PROOF MODE · SIMULATION</span>
+            <h3 id="simulation-title">Proactive follow-up, without fake persistence.</h3>
+            <p>This local demo proves the workflow shape only. It makes no database write and places no external call.</p>
+          </div>
+          <div className="simulation-flow">
+            <button type="button" onClick={createFollowUpSimulation} disabled={followUpStatus !== "idle"}>Create missing-document follow-up</button>
+            <span>→</span>
+            <button type="button" onClick={simulateThreeDaysLater} disabled={followUpStatus !== "pending"}>Simulate 3 days later</button>
+            <span className={`simulation-state ${followUpStatus}`}>{followUpStatus === "idle" ? "Not scheduled" : followUpStatus === "pending" ? "SIMULATED · pending" : "SIMULATED · due now"}</span>
+          </div>
+          {followUpStatus === "due" && (
+            <div className="simulation-result">
+              <PhoneCall size={15} />
+              <div><strong>Outbound callback workflow is due.</strong><small>No external call was placed. Production persistence + scheduler + Exotel confirmation are required before this becomes LIVE.</small></div>
+            </div>
+          )}
         </section>
 
         <section className="fallback-card" aria-labelledby="fallback-title">
