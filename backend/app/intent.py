@@ -13,7 +13,7 @@ _RULES: list[tuple[Intent, tuple[str, ...]]] = [
 
 
 def classify_intent(message: str) -> Intent:
-    text = re.sub(r"\\s+", " ", message.lower()).strip()
+    text = re.sub(r"\s+", " ", message.casefold()).strip()
     for intent, keywords in _RULES:
         if any(keyword in text for keyword in keywords):
             return intent
