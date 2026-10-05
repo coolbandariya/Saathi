@@ -8,11 +8,11 @@ from .schemas import ConversationRequest, ConversationResponse, AgentRequest
 from .orchestrator import AgentContext, Orchestrator
 from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
-from .observability import set_correlation_id
+from .observability import get_correlation_id, set_correlation_id
 
 settings = get_settings()
 app = FastAPI(title="Saathi API", version="0.3.0")
-app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(",") if x.strip()], allow_credentials=True, allow_methods=["GET", "POST"], allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature"])
+app.add_middleware(\n    CORSMiddleware,\n    allow_origins=[x.strip() for x in settings.cors_origins.split(",") if x.strip()],\n    allow_credentials=True,\n    allow_methods=["GET", "POST"],\n    allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature", "X-Correlation-ID"],\n    expose_headers=["X-Correlation-ID"],\n)
 limiter = InMemoryRateLimiter()
 orchestrator = Orchestrator()\n\n@app.middleware("http")\nasync def correlation_middleware(request: Request, call_next):\n    incoming = request.headers.get("X-Correlation-ID")\n    correlation_id = set_correlation_id(incoming)\n    response = await call_next(request)\n    response.headers["X-Correlation-ID"] = correlation_id\n    return response
 
@@ -35,7 +35,7 @@ def conversation(payload: ConversationRequest, request: Request) -> Conversation
         raise HTTPException(status_code=429, detail="rate_limited")
     intent = classify_intent(payload.message)
     replies = {"scheme":"Bilkul. Main scheme ki jaankari aur required documents samajhne mein madad karunga.","farming":"Bilkul. Main mausam, mandi aur kheti se judi jaankari mein madad karunga.","document":"Document milne par main uska text samajhne aur zaroori action nikalne mein madad kar sakta hoon.","task":"Theek hai. Main is request ko follow-up task ke roop mein rakhne ke liye taiyar hoon.","human":"Theek hai. Main aapki request ko human volunteer ke liye escalate karne ke liye taiyar hoon.","general":"Namaste! Main Saathi hoon. Aap Hindi mein apni zaroorat bata sakte hain."}
-    return ConversationResponse(status="ok", reply=replies[intent], intent=intent, demo=settings.demo_mode, correlation_id=set_correlation_id())
+    return ConversationResponse(status="ok", reply=replies[intent], intent=intent, demo=settings.demo_mode, correlation_id=get_correlation_id())
 
 @app.post("/api/v1/agent", response_model=ConversationResponse)
 async def agent(payload: AgentRequest, request: Request) -> ConversationResponse:
