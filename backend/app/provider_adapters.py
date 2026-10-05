@@ -41,8 +41,9 @@ async def _request_with_retry(client, method: str, url: str, *, attempts: int = 
 
 
 class SarvamSpeechToTextProvider:
-    def __init__(self, api_key: str, endpoint: str, model: str = "saaras:v4", mode: str = "transcribe", timeout_seconds: float = 20.0) -> None:
+    def __init__(self, api_key: str, endpoint: str, model: str = "saaras:v4", mode: str = "transcribe", timeout_seconds: float = 20.0, keyterms: list[str] | None = None) -> None:
         self.api_key, self.endpoint, self.model, self.mode, self.timeout_seconds = api_key, endpoint, model, mode, timeout_seconds
+        self.keyterms = tuple(keyterms or ())[:50]
 
     async def transcribe(self, audio: bytes, *, language: str) -> str:
         language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
@@ -51,7 +52,7 @@ class SarvamSpeechToTextProvider:
                 client, "POST", self.endpoint,
                 headers={"api-subscription-key": self.api_key},
                 files={"file": ("caller.webm", audio, "audio/webm")},
-                data={"model": self.model, "mode": "codemix", "language_code": language_code},
+                data={"model": self.model, "mode": "codemix", "language_code": language_code, "keyterms": json.dumps(list(self.keyterms)) if self.keyterms else None},
             )
             response.raise_for_status()
             payload = response.json()
@@ -150,8 +151,8 @@ class SafeProviderFactory:
         return GeminiInteractionsProvider(api_key, model) if api_key else None
 
     @staticmethod
-    def sarvam_stt(api_key: str | None, endpoint: str, model: str) -> SpeechToTextProvider | None:
-        return SarvamSpeechToTextProvider(api_key, endpoint, model) if api_key else None
+    def sarvam_stt(api_key: str | None, endpoint: str, model: str, keyterms: list[str] | None = None) -> SpeechToTextProvider | None:
+        return SarvamSpeechToTextProvider(api_key, endpoint, model, keyterms=keyterms) if api_key else None
 
     @staticmethod
     def sarvam_tts(api_key: str | None, endpoint: str, model: str, speaker: str) -> TextToSpeechProvider | None:
