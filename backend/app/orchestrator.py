@@ -27,6 +27,7 @@ class AgentOutcome:
     escalated: bool
     escalation_reason: EscalationReason | None
     tool_name: str | None = None
+    results: tuple[ToolResult, ...] = ()
 
 
 class Orchestrator:
@@ -59,6 +60,7 @@ class Orchestrator:
         explicit_human_request: bool = False,
         safety_boundary: bool = False,
         tool_name: str | None = None,
+        results: tuple[ToolResult, ...] = (),
     ) -> AgentOutcome:
         decision = self.escalation.evaluate(
             confidence=confidence,
@@ -74,6 +76,7 @@ class Orchestrator:
             escalated=decision.escalate,
             escalation_reason=decision.reason,
             tool_name=tool_name,
+            results=results or ((result,) if result else ()),
         )
 
     async def handle(self, message: str, context: AgentContext) -> AgentOutcome:
@@ -90,7 +93,71 @@ class Orchestrator:
 
         if intent == "farming":
             lowered = message.casefold()
-            if any(x in lowered for x in ("मौसम", "बारिश", "weather", "rain")):
+            wants_weather = any(x in lowered for x in ("मौसम", "बारिश", "weather", "rain"))
+            wants_mandi = any(x in lowered for x in ("मंडी", "mandi", "भाव", "रेट", "price", "bhav"))
+            if wants_weather and wants_mandi:
+                location = context.location
+                if location is None:
+                    return self._outcome(
+                        intent=intent,
+                        reply="मंडी का भाव तो देखा जा सकता है, लेकिन मौसम के लिए आपका शहर या स्थान चाहिए। कृपया अपना जिला या स्थान बताइए।",
+                        confidence=0.72,
+                        tool_name="get_weather",
+                    )
+                entities = extract_farming_entities(message)
+                missing = []
+                if not entities.commodity:
+                    missing.append("फसल")
+                if not entities.state:
+                    missing.append("राज्य")
+                if not entities.district and not entities.market:
+                    missing.append("जिला या मंडी")
+                if missing:
+                    return self._outcome(
+                        intent=intent,
+                        reply="मंडी और मौसम दोनों सही बताने के लिए " + " और ".join(missing) + " बताइए।",
+                        confidence=0.78,
+                        tool_name="get_mandi_price",
+                    )
+                if self.mandi is None:
+                    return self._outcome(
+                        intent=intent,
+                        reply="मंडी का सरकारी स्रोत अभी configured नहीं है। मैं demo भाव को live भाव नहीं बताऊँगा।",
+                        confidence=0.55,
+                        tool_name="get_mandi_price",
+                    )
+                weather_result = await self.weather.forecast(latitude=location.latitude, longitude=location.longitude)
+                mandi_result = await self.mandi.price(
+                    commodity=entities.commodity,
+                    state=entities.state,
+                    district=entities.district,
+                    market=entities.market,
+                )
+                parts = []
+                if mandi_result.ok:
+                    d = mandi_result.data
+                    market = d.get("market") or entities.market or entities.district or entities.state
+                    date = d.get("arrival_date") or "latest returned date"
+                    parts.append(f"सरकारी बाजार डेटा के अनुसार {market} में {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है (डेटा दिनांक {date})।")
+                else:
+                    parts.append("सरकारी मंडी स्रोत से इस अनुरोध के लिए विश्वसनीय भाव नहीं मिला, इसलिए मैं भाव का अनुमान नहीं दूँगा।")
+                if weather_result.ok:
+                    d = weather_result.data
+                    probability = d.get("rain_probability_pct", d.get("next_24h_rain_probability_max", 0))
+                    parts.append(f"उपलब्ध मौसम जानकारी के अनुसार तापमान {d['temperature_c']}°C है और अगले 24 घंटे में बारिश की अधिकतम संभावना {probability}% है।")
+                else:
+                    parts.append("मौसम की जानकारी अभी उपलब्ध नहीं है, इसलिए मैं बारिश की संभावना का अनुमान नहीं दूँगा।")
+                ok = mandi_result.ok or weather_result.ok
+                return self._outcome(
+                    intent=intent,
+                    reply=" ".join(parts),
+                    result=mandi_result if mandi_result.ok else weather_result,
+                    results=(mandi_result, weather_result),
+                    confidence=0.9 if mandi_result.ok and weather_result.ok else 0.6,
+                    tool_name="get_mandi_price+get_weather",
+                )
+
+            if wants_weather:
                 location = context.location
                 if location is None:
                     return self._outcome(
