@@ -1,22 +1,33 @@
-# Saathi Architecture Baseline
+# Saathi Architecture
 
-## Core principle
+## Runtime boundary
 
-Saathi is a voice-first AI agent that remembers unfinished tasks and proactively helps users complete them. The MVP is one verified end-to-end workflow, not a collection of disconnected AI demos.
+Phone/Web voice -> telephony/browser gateway -> STT -> orchestrator -> specialist tool -> safe response -> TTS.
 
-## Runtime flow
+Persistence is a separate port: the current branch uses an in-memory repository only for deterministic tests/demo. Supabase is deliberately not connected yet.
 
-Phone/Web voice -> telephony or browser gateway -> STT -> orchestrator -> specialist agent -> validated tools -> Supabase memory/tasks -> TTS -> user.
+## Completed non-Supabase foundation
 
-## Provider adapters
+- Typed FastAPI contracts with request IDs.
+- Deterministic intent routing and orchestrator.
+- Replaceable LLM/STT/TTS provider protocols.
+- Gemini adapter with lazy SDK import.
+- Demo provider mode with no external network requirement.
+- Consent/quiet-hour policy functions.
+- In-memory task repository with household isolation at the repository boundary.
+- Weather adapter for Open-Meteo.
+- Configurable Data.gov.in/AGMARKNET mandi adapter.
+- Source-backed PM-USP scheme eligibility evaluator.
+- Document upload validation and confidence review gate.
+- Volunteer support case state machine.
+- Exotel Voicebot event parser, replay guard, signature helper, and outbound Voice AI client.
+- Backend unit/API test coverage for these boundaries.
+- Interactive browser demo that calls the FastAPI conversation endpoint.
 
-External services must be isolated behind interfaces so they can be replaced without changing agent logic. Initial targets are Exotel for Indian telephony, Bhashini/Whisper for speech, Gemini/local model for reasoning, Supabase/Postgres/pgvector for persistence, Open-Meteo for weather, and official government/agriculture data sources for factual answers.
+## Source-of-truth rule
 
-## Safety boundaries
+LLMs explain results; they do not invent eligibility, weather, mandi prices, deadlines, application status, or medical advice. Factual tools return source metadata and an explicit stale/error state.
 
-- LLM output is not a source of truth for eligibility, prices, weather, deadlines, or application status.
-- Outbound calls require explicit consent and respect quiet hours.
-- Secrets stay server-side.
-- Household data is isolated with RLS.
-- Healthcare is informational/navigation-only in the MVP; no autonomous diagnosis or prescribing.
-- Demo data must be synthetic.
+## Next integration seam
+
+The Supabase repository will implement the existing MemoryStore contract. It must preserve household isolation, consent enforcement, auditability, and RLS; no agent code should import Supabase directly.
