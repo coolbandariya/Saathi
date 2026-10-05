@@ -21,7 +21,7 @@ Exotel AgentStream provides bidirectional WebSocket audio using raw mono 16-bit 
 Implication:
 
 - keep the current Exotel protocol boundary
-- replace the bounded REST speech adapter with a realtime STT/TTS transport next
+- verify the implemented realtime STT/TTS transport with real Sarvam credentials and a real Exotel call next
 - use provider VAD for turn detection rather than adding a second VAD blindly
 - implement barge-in by clearing outbound Exotel audio when caller speech starts (`clear` event)
 - add reconnect/failover handling and call-level correlation IDs
