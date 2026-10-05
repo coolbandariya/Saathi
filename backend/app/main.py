@@ -1,4 +1,5 @@
 from base64 import b64encode
+from time import perf_counter
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,6 +101,8 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(key):
         raise HTTPException(status_code=429, detail="rate_limited")
+    started = perf_counter()
+    started = perf_counter()
     outcome = await orchestrator.handle(
         payload.message,
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
@@ -115,6 +118,8 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
         escalated=outcome.escalated,
         escalation_reason=outcome.escalation_reason,
         confidence=outcome.confidence,
+        tool_name=outcome.tool_name,
+        latency_ms=round((perf_counter() - started) * 1000, 2),
     )
 
 
@@ -138,6 +143,8 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
         escalated=outcome.escalated,
         escalation_reason=outcome.escalation_reason,
         confidence=outcome.confidence,
+        tool_name=outcome.tool_name,
+        latency_ms=round((perf_counter() - started) * 1000, 2),
     )
 
 
@@ -174,6 +181,7 @@ async def voice_turn(
         if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
             raise HTTPException(status_code=422, detail="invalid_location_coordinates")
         location = LocationContext(latitude=latitude, longitude=longitude, label=location_label)
+    started = perf_counter()
     try:
         turn = await voice_gateway.handle(raw, language=language, household_id=household_id, location=location)
     except RuntimeError as exc:
@@ -196,6 +204,8 @@ async def voice_turn(
         escalated=turn.outcome.escalated,
         escalation_reason=turn.outcome.escalation_reason,
         confidence=turn.outcome.confidence,
+        tool_name=turn.outcome.tool_name,
+        latency_ms=round((perf_counter() - started) * 1000, 2),
     )
 
 
