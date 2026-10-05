@@ -9,7 +9,7 @@ class WeatherTool(Protocol):
 
 
 class MandiTool(Protocol):
-    async def price(self, *, commodity: str, state: str, district: str | None = None) -> ToolResult: ...
+    async def price(self, *, commodity: str, state: str, district: str | None = None, market: str | None = None) -> ToolResult: ...
 
 
 class DemoWeatherTool:
@@ -33,12 +33,12 @@ class DemoWeatherTool:
 
 
 class DemoMandiTool:
-    async def price(self, *, commodity: str, state: str, district: str | None = None) -> ToolResult:
+    async def price(self, *, commodity: str, state: str, district: str | None = None, market: str | None = None) -> ToolResult:
         return ToolResult(
             ok=True,
             data={
                 "commodity": commodity,
-                "market": district or state,
+                "market": market or district or state,
                 "min_price": 2100,
                 "modal_price": 2250,
                 "max_price": 2325,
