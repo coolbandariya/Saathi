@@ -11,3 +11,56 @@
 @media(prefers-reduced-motion:reduce){.caller-avatar.pulse{animation:none!important}.voice-pulse{box-shadow:none}}
 
 .voice-error{margin-top:10px;padding:10px 12px;border:1px solid rgba(180,70,70,.25);border-radius:12px;background:rgba(180,70,70,.06);font-size:12px;line-height:1.45}.voice-button:disabled{opacity:.55;cursor:not-allowed}
+
+/* Accessibility, readability and layout hardening */
+:where(a,button,textarea):focus-visible{outline:3px solid #d9a64b;outline-offset:3px}
+button,a{touch-action:manipulation}
+.command-shell,.command-shell *{min-width:0}
+.command-wrap{overflow-x:clip}
+.judge-title-row{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}
+.judge-title-row h2{flex:1}
+.judge-close{width:34px;height:34px;display:grid;place-items:center;border:1px solid #ffffff25;background:#ffffff08;color:#fff;border-radius:9px;cursor:pointer;flex:none}
+.judge-close:hover{background:#ffffff14}
+.metric-card small,.panel-kicker{font-size:9px}
+.metric-card p{font-size:11px}
+.demo-tag{font-size:9px}
+.caller-context span:not(.call-state){font-size:10px}
+.call-state{font-size:9px}
+.trace-num{font-size:10px}
+.trace-label{font-size:11px}
+.privacy-box strong{font-size:11px}
+.privacy-box p{font-size:10px}
+.flow-step>span{font-size:9px}
+.flow-step strong{font-size:12px}
+.flow-step small{font-size:9px}
+.command-footer{font-size:9px}
+.judge-step strong{font-size:10px}
+.judge-step small{font-size:8px}
+.judge-live strong{font-size:11px}
+.judge-live small{font-size:9px}
+.scenario-tabs button{font-size:10px}
+.voice-controls>span{font-size:10px}
+.source-row strong{font-size:11px}
+.source-row span{font-size:10px}
+.correlation-line{font-size:9px}
+.location-row p{font-size:10px}
+.source-status{font-size:9px}
+.health-list>div{font-size:10px}
+.health-list b{font-size:8px}
+.consent-intro{font-size:11px}
+.consent-option strong{font-size:11px}
+.consent-option small{font-size:9px}
+.consent-note{font-size:9px}
+.fallback-copy p{font-size:10px}
+.fallback-status span{font-size:10px}
+.fallback-status small{font-size:8px}
+.voice-error{color:#6f2e2e;font-weight:600}
+@media(max-width:560px){
+  .caller-context{align-items:flex-start;flex-wrap:wrap}
+  .call-state{margin-left:51px}
+  .judge-title-row h2{font-size:22px}
+  .answer-card>p{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){
+  .orb,.orb-ring,.caller-avatar,.voice-pulse{animation:none!important}
+}
