@@ -93,3 +93,18 @@ def test_realtime_bridge_forwards_pcm_and_handles_barge_in():
         assert stt.closed
 
     asyncio.run(run())
+
+
+def test_realtime_stt_url_has_telephony_safe_contract():
+    from app.provider_adapters import SarvamRealtimeSTTSession
+    session = SarvamRealtimeSTTSession(
+        api_key="key",
+        keyterms=["Sonipat", "सोनीपत", "गेहूं"],
+    )
+    url = session._url(8000)
+    assert "model=saaras%3Av4" in url
+    assert "encoding=linear16" in url
+    assert "sample_rate=8000" in url
+    assert "endpointing=vad" in url
+    assert "mode=codemix" in url
+    assert "keyterms=" in url
