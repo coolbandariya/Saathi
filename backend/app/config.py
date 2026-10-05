@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     exotel_subdomain: str | None = None
     exotel_virtual_number: str | None = None
     exotel_account_sid: str | None = None
+    exotel_base_url: str = "https://api.in.exotel.com"
     exotel_webhook_secret: str | None = None
+    mandi_resource_url: str | None = None
+    data_gov_api_key: str | None = None
     demo_mode: bool = True
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
