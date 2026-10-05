@@ -204,6 +204,7 @@ export default function Dashboard() {
             <span><Zap size={13} /> API ready</span>
             <span><ShieldCheck size={13} /> Consent-led</span>
             <span><Languages size={13} /> Hindi-first</span>
+            {!showJudge && <button type="button" className="judge-toggle" onClick={() => setShowJudge(true)}>Show judge mode</button>}
           </div>
         </header>
 
