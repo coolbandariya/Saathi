@@ -1,21 +1,22 @@
 from base64 import b64encode
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .intent import classify_intent
 from .schemas import AgentRequest, ConversationRequest, ConversationResponse, VoiceTurnResponse
 from .orchestrator import AgentContext, Orchestrator
 from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
 from .observability import get_correlation_id, set_correlation_id
+from .telephony_voice import SarvamTelephonySpeechProvider
 from .voice import VoiceGateway
+from .voice_bridge import run_exotel_session
 from .webhook_events import InMemoryWebhookEventStore, derive_event_id
 
 
 settings = get_settings()
-app = FastAPI(title="Saathi API", version="0.6.0")
+app = FastAPI(title="Saathi API", version="0.7.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[x.strip() for x in settings.cors_origins.split(",") if x.strip()],
@@ -51,7 +52,14 @@ def liveness() -> dict[str, str]:
 
 @app.get("/health/ready")
 def readiness() -> dict[str, object]:
-    telephony = bool(settings.telephony_webhook_secret and settings.exotel_api_key and settings.exotel_api_token and settings.exotel_account_sid and settings.exotel_virtual_number and settings.exotel_stream_url)
+    telephony = bool(
+        settings.telephony_webhook_secret
+        and settings.exotel_api_key
+        and settings.exotel_api_token
+        and settings.exotel_account_sid
+        and settings.exotel_virtual_number
+        and settings.exotel_stream_url
+    )
     reasoning = bool(getattr(settings, "gemini_api_key", None) or getattr(settings, "openai_api_key", None))
     mandi = bool(settings.mandi_api_key and settings.mandi_resource_id)
     speech = bool(
@@ -72,6 +80,17 @@ def readiness() -> dict[str, object]:
     }
 
 
+def _source(outcome):
+    if outcome.result and outcome.result.source:
+        return {
+            "name": outcome.result.source.name,
+            "url": outcome.result.source.url,
+            "retrieved_at": outcome.result.source.retrieved_at.isoformat(),
+            "freshness_note": outcome.result.source.freshness_note,
+        }
+    return None
+
+
 @app.post("/api/v1/conversation", response_model=ConversationResponse)
 async def conversation(payload: ConversationRequest, request: Request) -> ConversationResponse:
     key = request.client.host if request.client else "unknown"
@@ -79,32 +98,21 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
         raise HTTPException(status_code=429, detail="rate_limited")
     outcome = await orchestrator.handle(
         payload.message,
-        AgentContext(
-            household_id=payload.household_id,
-            language=payload.language,
-            location=payload.location,
-        ),
+        AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
     )
-    source = None
-    if outcome.result and outcome.result.source:
-        source = {
-            "name": outcome.result.source.name,
-            "url": outcome.result.source.url,
-            "retrieved_at": outcome.result.source.retrieved_at.isoformat(),
-            "freshness_note": outcome.result.source.freshness_note,
-        }
     failed = bool(outcome.result and not outcome.result.ok)
     return ConversationResponse(
         status="error" if failed else "ok",
         reply=outcome.reply,
         intent=outcome.intent,
-        source=source,
+        source=_source(outcome),
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
         escalated=outcome.escalated,
         escalation_reason=outcome.escalation_reason,
         confidence=outcome.confidence,
     )
+
 
 @app.post("/api/v1/agent", response_model=ConversationResponse)
 async def agent(payload: AgentRequest, request: Request) -> ConversationResponse:
@@ -115,20 +123,12 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
         payload.message,
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
     )
-    source = None
-    if outcome.result and outcome.result.source:
-        source = {
-            "name": outcome.result.source.name,
-            "url": outcome.result.source.url,
-            "retrieved_at": outcome.result.source.retrieved_at.isoformat(),
-            "freshness_note": outcome.result.source.freshness_note,
-        }
     failed = bool(outcome.result and not outcome.result.ok)
     return ConversationResponse(
         status="error" if failed else "ok",
         reply=outcome.reply,
         intent=outcome.intent,
-        source=source,
+        source=_source(outcome),
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
         escalated=outcome.escalated,
@@ -169,14 +169,6 @@ async def voice_turn(
     except Exception as exc:
         raise HTTPException(status_code=502, detail="voice_provider_error") from exc
 
-    source = None
-    if turn.outcome.result and turn.outcome.result.source:
-        source = {
-            "name": turn.outcome.result.source.name,
-            "url": turn.outcome.result.source.url,
-            "retrieved_at": turn.outcome.result.source.retrieved_at.isoformat(),
-            "freshness_note": turn.outcome.result.source.freshness_note,
-        }
     return VoiceTurnResponse(
         status="ok",
         transcript=turn.transcript,
@@ -184,13 +176,52 @@ async def voice_turn(
         intent=turn.outcome.intent,
         audio_base64=b64encode(turn.audio).decode("ascii") if turn.audio else None,
         audio_mime_type="audio/wav" if turn.audio else None,
-        source=source,
+        source=_source(turn.outcome),
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
         escalated=turn.outcome.escalated,
         escalation_reason=turn.outcome.escalation_reason,
         confidence=turn.outcome.confidence,
     )
+
+
+@app.websocket("/api/v1/telephony/stream")
+async def telephony_stream(websocket: WebSocket) -> None:
+    """Exotel AgentStream endpoint.
+
+    The endpoint is intentionally provider-gated. It accepts a real Exotel
+    websocket only when the Sarvam speech provider is configured. The current
+    bridge is bounded-turn, so this is executable but not advertised as realtime.
+    """
+    if not settings.exotel_stream_url or not settings.sarvam_api_key:
+        await websocket.close(code=1013, reason="telephony_provider_not_configured")
+        return
+
+    await websocket.accept()
+    try:
+        speech = SarvamTelephonySpeechProvider(settings)
+
+        async def transcribe(pcm: bytes, sample_rate: int) -> str:
+            return await speech.transcribe(pcm, sample_rate=sample_rate, language="hi-IN")
+
+        async def respond(text: str) -> str:
+            outcome = await orchestrator.handle(text, AgentContext(household_id=None, language="hi"))
+            return outcome.reply
+
+        async def synthesize(text: str, sample_rate: int) -> bytes:
+            return await speech.synthesize(text, sample_rate=sample_rate, language="hi-IN")
+
+        await run_exotel_session(
+            websocket,
+            transcribe=transcribe,
+            respond=respond,
+            synthesize=synthesize,
+        )
+    except WebSocketDisconnect:
+        return
+    except Exception:
+        if websocket.client_state.name == "CONNECTED":
+            await websocket.close(code=1011, reason="telephony_session_error")
 
 
 @app.post("/api/v1/webhooks/telephony")
