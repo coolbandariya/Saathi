@@ -1,4 +1,3 @@
-import base64
 import json
 from dataclasses import dataclass
 from typing import Any
@@ -21,12 +20,21 @@ class SarvamDocumentAIProvider:
         base_url: str = "https://api.sarvam.ai",
         timeout_seconds: float = 30.0,
     ) -> None:
+        if not api_key:
+            raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
 
     def _headers(self) -> dict[str, str]:
         return {"api-subscription-key": self.api_key}
+
+    @staticmethod
+    def _job(body: dict[str, Any]) -> DocumentJob:
+        job_id = str(body.get("job_id") or body.get("id") or "").strip()
+        if not job_id:
+            raise ValueError("document_ai_missing_job_id")
+        return DocumentJob(job_id=job_id, status=str(body.get("status") or "pending"))
 
     async def digitise(
         self,
@@ -39,6 +47,8 @@ class SarvamDocumentAIProvider:
     ) -> DocumentJob:
         if output_format not in {"md", "html", "json"}:
             raise ValueError("output_format must be md, html, or json")
+        if not content:
+            raise ValueError("document_content_empty")
         files = {"file": (filename, content, content_type)}
         data = {"language": language, "output_format": output_format}
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
@@ -49,22 +59,22 @@ class SarvamDocumentAIProvider:
                 data=data,
             )
             response.raise_for_status()
-            body = response.json()
-        return DocumentJob(
-            job_id=str(body.get("job_id") or body.get("id") or ""),
-            status=str(body.get("status") or "submitted"),
-        )
+            return self._job(response.json())
 
     async def status(self, job_id: str) -> dict[str, Any]:
+        if not job_id.strip():
+            raise ValueError("document_ai_job_id_required")
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             response = await client.get(
-                f"{self.base_url}/doc-ai/v1/job/{job_id}",
+                f"{self.base_url}/doc-ai/v1/job/{job_id}/status",
                 headers=self._headers(),
             )
             response.raise_for_status()
             return response.json()
 
     async def results(self, job_id: str) -> dict[str, Any]:
+        if not job_id.strip():
+            raise ValueError("document_ai_job_id_required")
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             response = await client.get(
                 f"{self.base_url}/doc-ai/v1/job/{job_id}/results",
@@ -81,9 +91,20 @@ class SarvamDocumentAIProvider:
         content_type: str,
         schema: dict[str, Any],
         language: str = "hi-IN",
+        output_format: str = "json",
     ) -> DocumentJob:
+        if not content:
+            raise ValueError("document_content_empty")
+        if output_format not in {"json", "csv", "xlsx"}:
+            raise ValueError("extract output_format must be json, csv, or xlsx")
+        if schema.get("type") != "object" or not isinstance(schema.get("properties"), dict) or not schema["properties"]:
+            raise ValueError("extract schema must be a non-empty object schema")
         files = {"file": (filename, content, content_type)}
-        data = {"language": language, "schema": json.dumps(schema)}
+        data = {
+            "language": language,
+            "schema": json.dumps(schema),
+            "output_format": output_format,
+        }
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             response = await client.post(
                 f"{self.base_url}/doc-ai/v1/job/extract",
@@ -92,8 +113,4 @@ class SarvamDocumentAIProvider:
                 data=data,
             )
             response.raise_for_status()
-            body = response.json()
-        return DocumentJob(
-            job_id=str(body.get("job_id") or body.get("id") or ""),
-            status=str(body.get("status") or "submitted"),
-        )
+            return self._job(response.json())
