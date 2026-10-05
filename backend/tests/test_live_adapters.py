@@ -84,3 +84,36 @@ def test_sarvam_tts_decodes_audio(monkeypatch):
         "नमस्ते", language="hi"
     ))
     assert result == expected
+
+def test_exotel_voice_ai_call_sends_destination_and_stream(monkeypatch):
+    class ExotelResponse(FakeResponse):
+        def __init__(self):
+            super().__init__({"Call": {"Sid": "call-123"}})
+
+    captured = {}
+
+    class ExotelClient(FakeClient):
+        response = ExotelResponse()
+
+        async def post(self, *args, **kwargs):
+            captured["url"] = args[0]
+            captured["data"] = kwargs["data"]
+            captured["auth"] = kwargs["auth"]
+            return self.response
+
+    monkeypatch.setattr(provider_adapters.httpx, "AsyncClient", ExotelClient)
+    provider = provider_adapters.ExotelTelephonyProvider(
+        account_sid="sid",
+        api_key="key",
+        api_token="token",
+        caller_id="18001234567",
+    )
+    result = asyncio.run(provider.place_voice_ai_call(
+        to="+919999999999",
+        stream_url="wss://voice.example.test/stream",
+    ))
+    assert result == "call-123"
+    assert captured["data"]["From"] == "18001234567"
+    assert captured["data"]["To"] == "+919999999999"
+    assert captured["data"]["StreamUrl"] == "wss://voice.example.test/stream"
+    assert captured["data"]["StreamType"] == "bidirectional"
