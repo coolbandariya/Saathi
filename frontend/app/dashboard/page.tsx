@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
-  CloudRain, FileText, Languages, MapPin, Mic2, PhoneCall, Play,
+  CloudRain, Languages, MapPin, Mic2, PhoneCall, Play,
   ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap, type LucideIcon
 } from "lucide-react";
 
@@ -66,7 +66,6 @@ export default function Dashboard() {
   const [reminderConsent, setReminderConsent] = useState(false);
   const [showJudge, setShowJudge] = useState(true);
   const [judgeIndex, setJudgeIndex] = useState(-1);
-  const [expanded, setExpanded] = useState<string | null>("memory");
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
   const [followUpStatus, setFollowUpStatus] = useState<"idle" | "pending" | "due">("idle");
