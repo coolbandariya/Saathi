@@ -84,7 +84,7 @@ def extract_farming_entities(message: str) -> FarmingEntities:
     state = "Haryana" if district or any(_contains_keyword(text, x) for x in ("haryana", "हरियाणा")) else None
 
     market = None
-    if district and re.search(rf"{re.escape(text)}", text):
+    if district:
         # A district followed/preceded by mandi/bazaar is a strong enough market
         # signal for the prototype; otherwise leave market unspecified.
         for alias, normalized in _DISTRICT_ALIASES.items():
