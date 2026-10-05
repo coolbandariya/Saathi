@@ -176,7 +176,7 @@ async def voice_turn(
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"voice:{key}"):
         raise HTTPException(status_code=429, detail="rate_limited")
-    allowed_audio_types = {"audio/webm", "audio/wav", "audio/x-wav", "audio/ogg", "audio/mp4", "audio/mpeg"}
+    allowed_audio_types = {"audio/webm", "audio/wav", "audio/x-wav"}
     if audio.content_type and audio.content_type not in allowed_audio_types:
         raise HTTPException(status_code=415, detail="unsupported_audio_type")
     if len(language) < 2 or len(language) > 20:
