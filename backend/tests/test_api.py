@@ -14,3 +14,26 @@ def test_agent_endpoint_returns_provenance():
 
 def test_liveness():
     assert TestClient(app).get('/health/live').json()['status']=='alive'
+
+
+def test_agent_endpoint_exposes_all_sources_for_combined_request():
+    client=TestClient(app)
+    response=client.post(
+        '/api/v1/agent',
+        json={
+            'message':'सोनीपत में गेहूं का मंडी भाव और अगले 24 घंटे में बारिश का chance?',
+            'language':'hi',
+            'location':{'latitude':28.9931,'longitude':77.0151,'label':'Sonipat'},
+        },
+    )
+    assert response.status_code == 200
+    data=response.json()
+    assert data['tool_name']=='get_mandi_price+get_weather'
+    assert len(data['sources']) == 2
+    assert data['source']['name'] in {item['name'] for item in data['sources']}
+
+def test_voice_response_schema_keeps_telemetry_fields():
+    from app.schemas import VoiceTurnResponse
+    payload=VoiceTurnResponse(status='ok',tool_name='get_weather',latency_ms=12.5)
+    assert payload.tool_name == 'get_weather'
+    assert payload.latency_ms == 12.5
