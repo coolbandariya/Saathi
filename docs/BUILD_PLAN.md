@@ -22,6 +22,8 @@ The remaining work before Supabase is intentionally narrow: run the configured p
 - [x] Exotel AgentStream media primitives
 - [x] Executable Exotel WebSocket route
 - [x] Bounded-turn phone STT → orchestrator → TTS adapter
+- [x] Sarvam Realtime STT WebSocket transport with VAD and keyterms
+- [x] Sarvam streaming TTS WebSocket transport with cancellation-aware barge-in
 - [x] Gemini structured tool-call boundary with allow-listed tool validation
 - [x] Frontend lint/typecheck/build and dependency-audit workflow
 - [ ] Run provider-backed browser voice with real Sarvam credentials and record transcript/audio latency
@@ -48,13 +50,13 @@ After the non-Supabase release gate passes:
 
 ## P2 — Low-latency phone runtime
 
-The current phone endpoint is executable but intentionally bounded-turn. For production voice-agent behavior:
+The realtime transport is now implemented behind `SARVAM_REALTIME_STT_ENABLED=false` by default. Remaining work is provider/deployment verification:
 
-1. Replace REST STT batching with Sarvam Realtime STT WebSocket.
-2. Use VAD/partial transcripts for turn detection and barge-in.
-3. Stream Sarvam TTS audio instead of waiting for a whole utterance.
-4. Keep Exotel raw Linear16 audio at the negotiated 8/16/24 kHz rate.
-5. Add reconnect/failover behavior and call-level observability.
+1. Run Sarvam Realtime STT against a real key and verify VAD/final events.
+2. Run streaming TTS and verify Linear16 output at the Exotel rate.
+3. Run a real Exotel call against a public `wss://` deployment.
+4. Add reconnect/failover behavior and call-level observability.
+5. Measure first partial, final transcript, first audio and turn-complete latency.
 6. Only claim live phone AI after a real call completes the full round trip.
 
 ## P3 — Factual depth and language robustness
