@@ -33,7 +33,7 @@ const flowSteps: [string, string, string, LucideIcon][] = [
   ["01", "Listen", "Voice / missed call", Mic2],
   ["02", "Understand", "Language + intent", Languages],
   ["03", "Act", "Specialist + tools", Bot],
-  ["04", "Remember", "Consent-based memory", ShieldCheck],
+  ["04", "Protect", "Consent boundary", ShieldCheck],
   ["05", "Escalate", "Human when needed", UserRound],
 ];
 
@@ -42,7 +42,7 @@ const judgeSteps = [
   ["lang", "Hindi understood", "Language + intent", Languages],
   ["agent", "Farming agent selected", "Specialist routing", Bot],
   ["tool", "Mandi source checked", "Verified tool", Wheat],
-  ["memory", "Context remembered", "Consent-gated memory", ShieldCheck],
+  ["memory", "Consent checked", "No silent memory", ShieldCheck],
   ["fallback", "Human fallback ready", "Escalation", UserRound],
 ] as const;
 
@@ -239,7 +239,7 @@ export default function Dashboard() {
             <div className="judge-copy">
               <div className="panel-kicker">JUDGE MODE · GOLDEN DEMO</div>
               <div className="judge-title-row"><h2 id="judge-mode-title">One call. One visible chain.</h2><button type="button" className="judge-close" onClick={() => setShowJudge(false)} aria-label="Close judge mode"><X size={16} /></button></div>
-              <p>Run the recommended 60-second story: missed call → Hindi → farming agent → verified mandi/weather tools → memory → human fallback.</p>
+              <p>Run the recommended 60-second story: request → Hindi → farming intent → verified tools → consent boundary → human fallback.</p>
               <button type="button" className="judge-start" onClick={startJudge}>
                 <Play size={15} fill="currentColor" /> Start golden demo
               </button>
@@ -286,7 +286,7 @@ export default function Dashboard() {
           <div className="caller-panel">
             <div className="panel-head">
               <div><span className="panel-kicker">CALLER SIMULATOR</span><h2>What would you ask Saathi?</h2></div>
-              <span className="demo-tag"><i /> DEMO</span>
+              <span className="demo-tag"><i /> DEMO · SAFE MODE</span>
             </div>
 
             <div className="caller-context">
@@ -323,7 +323,7 @@ export default function Dashboard() {
                 <div className="answer-label"><span><Bot size={15} /> SAATHI RESPONSE</span><b>{result.intent}</b></div>
                 <p>{result.reply}</p>
                 {result.source ? (
-                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span></div></div>
+                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span>{result.source.url && <a href={result.source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
                 ) : (
                   <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
                 )}
