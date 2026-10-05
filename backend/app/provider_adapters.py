@@ -64,7 +64,7 @@ class ExotelTelephonyProvider:
 
     async def place_call(self, *, to: str, callback_url: str) -> str:
         url=f"https://{self.host}/v1/Accounts/{self.account_sid}/Calls/connect"
-        data={"From":to,"To":to,"CallerId":self.caller_id,"StatusCallback":callback_url}
+        data={"From":self.caller_id,"To":to,"CallerId":self.caller_id,"StatusCallback":callback_url}
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             response=await client.post(url,data=data,auth=(self.api_key,self.api_token))
             response.raise_for_status()
