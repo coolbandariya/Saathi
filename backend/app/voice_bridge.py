@@ -129,3 +129,119 @@ async def run_exotel_session(
 
         # DTMF/mark events are deliberately ignored by the bounded MVP bridge.
         # They remain part of the protocol surface for a future barge-in/handoff path.
+
+
+async def run_exotel_realtime_session(
+    websocket: Any,
+    *,
+    stt_session: Any,
+    respond: Callable[[str], Awaitable[str]],
+    synthesize_stream: Callable[[str, int], Any],
+) -> None:
+    """Run a genuine streaming STT + streaming TTS Exotel session.
+
+    Exotel PCM is forwarded continuously to Sarvam Realtime STT. Final
+    transcripts become turns without buffering a whole utterance locally.
+    Sarvam VAD drives turn boundaries and speech-start events cancel/clear
+    agent playback for deterministic barge-in.
+    """
+    import asyncio
+
+    stream_sid: str | None = None
+    sample_rate = 8000
+    playback_task: asyncio.Task | None = None
+    response_tasks: set[asyncio.Task] = set()
+
+    async def cancel_playback() -> None:
+        nonlocal playback_task
+        if playback_task and not playback_task.done():
+            playback_task.cancel()
+            try:
+                await playback_task
+            except asyncio.CancelledError:
+                pass
+        playback_task = None
+        if stream_sid:
+            await websocket.send(encode_clear(stream_sid))
+
+    async def speak(reply: str) -> None:
+        if not stream_sid:
+            return
+        async for chunk in synthesize_stream(reply, sample_rate):
+            if not chunk:
+                continue
+            await websocket.send(encode_media(stream_sid, chunk))
+
+    async def process_transcript(transcript: str) -> None:
+        nonlocal playback_task
+        if not transcript.strip():
+            return
+        await cancel_playback()
+        reply = await respond(transcript)
+        if not reply.strip():
+            return
+        playback_task = asyncio.create_task(speak(reply))
+
+    async def stt_reader() -> None:
+        nonlocal playback_task
+        while True:
+            event = await stt_session.receive()
+            event_name = event.get("event")
+            if event_name == "vad.speech_start":
+                await cancel_playback()
+            elif event_name == "transcript.final":
+                text = str(event.get("text") or "").strip()
+                if text:
+                    task = asyncio.create_task(process_transcript(text))
+                    response_tasks.add(task)
+                    task.add_done_callback(response_tasks.discard)
+            elif event_name == "error":
+                if event.get("is_fatal"):
+                    raise RuntimeError("sarvam_realtime_stt_fatal")
+
+    try:
+        async for raw in websocket:
+            try:
+                event = json.loads(raw)
+            except (TypeError, json.JSONDecodeError):
+                continue
+
+            event_type = event.get("event")
+            if event_type == "connected":
+                continue
+
+            if event_type == "start":
+                start = parse_start(event)
+                if not start.stream_sid or not start.call_sid:
+                    raise ValueError("invalid_exotel_start_event")
+                if start.sample_rate not in {8000, 16000}:
+                    raise ValueError("realtime_bridge_requires_8k_or_16k")
+                stream_sid, sample_rate = start.stream_sid, start.sample_rate
+                await stt_session.connect(sample_rate=sample_rate)
+                reader_task = asyncio.create_task(stt_reader())
+                continue
+
+            if event_type == "media":
+                try:
+                    pcm = decode_media(event)
+                except (ValueError, TypeError):
+                    continue
+                if pcm:
+                    await stt_session.send_audio(pcm)
+                continue
+
+            if event_type == "stop":
+                break
+
+        if stream_sid:
+            await stt_session.close()
+    finally:
+        await cancel_playback()
+        for task in list(response_tasks):
+            task.cancel()
+        if response_tasks:
+            await asyncio.gather(*response_tasks, return_exceptions=True)
+        try:
+            await stt_session.close()
+        except Exception:
+            pass
