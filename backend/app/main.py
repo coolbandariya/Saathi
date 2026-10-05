@@ -147,6 +147,13 @@ async def voice_turn(
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"voice:{key}"):
         raise HTTPException(status_code=429, detail="rate_limited")
+    allowed_audio_types = {"audio/webm", "audio/wav", "audio/x-wav", "audio/ogg", "audio/mp4", "audio/mpeg"}
+    if audio.content_type and audio.content_type not in allowed_audio_types:
+        raise HTTPException(status_code=415, detail="unsupported_audio_type")
+    if len(language) < 2 or len(language) > 20:
+        raise HTTPException(status_code=422, detail="invalid_language")
+    if household_id is not None and (len(household_id) < 1 or len(household_id) > 120):
+        raise HTTPException(status_code=422, detail="invalid_household_id")
     raw = await audio.read()
     if not raw:
         raise HTTPException(status_code=422, detail="empty_audio")
