@@ -107,6 +107,25 @@ class ExotelTelephonyProvider:
             payload = response.json()
         return str(payload.get("Call", {}).get("Sid") or "")
 
+    async def place_voice_ai_call(self, *, to: str, stream_url: str, callback_url: str | None = None) -> str:
+        if not stream_url.startswith("wss://"):
+            raise ValueError("Exotel Voice AI StreamUrl must use wss://")
+        url = f"https://{self.host}/v1/Accounts/{self.account_sid}/Calls/connect"
+        data = {
+            "From": to,
+            "CallerId": self.caller_id,
+            "StreamUrl": stream_url,
+            "StreamType": "bidirectional",
+        }
+        if callback_url:
+            data["StatusCallback"] = callback_url
+            data["StatusCallbackEvents[]"] = "terminal"
+        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            response = await client.post(url, data=data, auth=(self.api_key, self.api_token))
+            response.raise_for_status()
+            payload = response.json()
+        return str(payload.get("Call", {}).get("Sid") or "")
+
 
 class SafeProviderFactory:
     @staticmethod
