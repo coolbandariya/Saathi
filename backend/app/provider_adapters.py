@@ -47,7 +47,7 @@ class SarvamTextToSpeechProvider:
         self.api_key, self.endpoint, self.model, self.speaker, self.timeout_seconds = api_key, endpoint, model, speaker, timeout_seconds
 
     async def synthesize(self, text: str, *, language: str) -> bytes:
-        language_code = language if "-" in language else f"{language}-IN"
+        language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             response = await client.post(
                 self.endpoint,
