@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from .intent import classify_intent
+from .intent import FarmingEntities, classify_intent, extract_farming_entities
 from .schemas import Intent
 
 
@@ -161,3 +161,33 @@ def run_intent_benchmark() -> dict[str, float | int]:
         "total": len(CASES),
         "accuracy": correct / len(CASES),
     }
+
+
+@dataclass(frozen=True)
+class FarmingEntityCase:
+    text: str
+    expected: FarmingEntities
+
+
+FARMING_ENTITY_CASES = (
+    FarmingEntityCase("सोनीपत मंडी में गेहूं का भाव", FarmingEntities(commodity="Wheat", state="Haryana", district="Sonipat", market="Sonipat")),
+    FarmingEntityCase("Haryana me wheat ka rate", FarmingEntities(commodity="Wheat", state="Haryana")),
+    FarmingEntityCase("Panipat mandi me mustard", FarmingEntities(commodity="Mustard", state="Haryana", district="Panipat", market="Panipat")),
+    FarmingEntityCase("करनाल में धान का भाव", FarmingEntities(commodity="Paddy", state="Haryana", district="Karnal")),
+    FarmingEntityCase("हिसार में आलू का रेट", FarmingEntities(commodity="Potato", state="Haryana", district="Hisar")),
+    FarmingEntityCase("Rohtak me tomato mandi", FarmingEntities(commodity="Tomato", state="Haryana", district="Rohtak", market="Rohtak")),
+    FarmingEntityCase("गेहूं का मंडी भाव", FarmingEntities(commodity="Wheat")),
+    FarmingEntityCase("mustard ka bhav Haryana", FarmingEntities(commodity="Mustard", state="Haryana")),
+    FarmingEntityCase("सोनीपत में चावल", FarmingEntities(commodity="Paddy", state="Haryana", district="Sonipat")),
+    FarmingEntityCase("पानीपत मंडी में आलू", FarmingEntities(commodity="Potato", state="Haryana", district="Panipat", market="Panipat")),
+)
+
+
+def run_farming_entity_benchmark() -> dict[str, float | int]:
+    fields = ("commodity", "state", "district", "market")
+    correct = 0
+    total = len(FARMING_ENTITY_CASES) * len(fields)
+    for case in FARMING_ENTITY_CASES:
+        actual = extract_farming_entities(case.text)
+        correct += sum(getattr(actual, field) == getattr(case.expected, field) for field in fields)
+    return {"correct": correct, "total": total, "accuracy": correct / total}
