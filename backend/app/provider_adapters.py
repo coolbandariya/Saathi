@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import httpx
 
@@ -22,6 +23,19 @@ class GeminiInteractionsProvider:
             response.raise_for_status()
             data = response.json()
         return str(data.get("output_text") or "")
+
+
+async def _request_with_retry(client, method: str, url: str, *, attempts: int = 3, **kwargs):
+    for attempt in range(attempts):
+        try:
+            response = await client.request(method, url, **kwargs)
+            if response.status_code not in {429, 500, 502, 503, 504} or attempt == attempts - 1:
+                return response
+        except httpx.RequestError:
+            if attempt == attempts - 1:
+                raise
+        await asyncio.sleep(min(2 ** attempt, 4))
+    raise RuntimeError("provider_request_failed")
 
 
 class SarvamSpeechToTextProvider:
@@ -49,10 +63,10 @@ class SarvamTextToSpeechProvider:
     async def synthesize(self, text: str, *, language: str) -> bytes:
         language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            response = await client.post(
-                self.endpoint,
+            response = await _request_with_retry(
+                client, "POST", self.endpoint,
                 headers={"api-subscription-key": self.api_key, "Content-Type": "application/json"},
-                json={"text": text[:2500], "model": self.model, "speaker": self.speaker, "language_code": language_code},
+                json={"text": text[:2500], "model": self.model, "speaker": self.speaker, "language_code": language_code, "output_audio_codec": "wav"},
             )
             response.raise_for_status()
             body = response.json()
