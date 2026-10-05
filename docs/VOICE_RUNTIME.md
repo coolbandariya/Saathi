@@ -18,7 +18,7 @@ The frontend microphone control uses this endpoint. It is provider-gated: withou
 
 The repository exposes /api/v1/telephony/stream as a FastAPI WebSocket endpoint for Exotel AgentStream. It accepts Exotel connected, start, media and stop events and sends bidirectional media frames containing raw mono Linear16 PCM.
 
-The current bridge is bounded-turn: it collects up to roughly two seconds of inbound audio, sends the turn to Sarvam REST STT, runs the Saathi orchestrator, then requests Sarvam TTS as raw linear16 audio at the negotiated sample rate. This makes the protocol and provider boundary executable without pretending it is low-latency realtime.
+The current bridge is bounded-turn: it collects inbound audio until a conservative PCM silence boundary (with an eight-second safety cap), sends the turn to Sarvam REST STT, runs the Saathi orchestrator, then requests Sarvam TTS as raw linear16 audio at the negotiated sample rate. This makes the protocol and provider boundary executable without pretending it is low-latency realtime.
 
 For a production conversational phone agent, replace the bounded speech adapter with Sarvam Realtime STT/TTS WebSockets. Sarvam's current realtime STT endpoint is wss://api.sarvam.ai/speech-to-text-realtime/ws and emits partial/final transcript events; Exotel AgentStream sends raw 16-bit mono Linear16 PCM at 8/16/24 kHz.
 
