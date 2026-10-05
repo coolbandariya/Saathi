@@ -51,11 +51,14 @@ def test_open_meteo_adapter_preserves_coordinates(monkeypatch):
 def test_mandi_adapter_maps_government_record(monkeypatch):
     FakeClient.response = FakeResponse({
         "records": [{
-            "Commodity": "Wheat",
-            "Market": "Sonipat",
-            "Min_Price": "2100",
-            "Modal_Price": "2250",
-            "Max_Price": "2325",
+            "state": "Haryana",
+            "district": "Sonipat",
+            "market": "Sonipat",
+            "commodity": "Wheat",
+            "arrival_date": "06/10/2026",
+            "min_price": "2100",
+            "modal_price": "2250",
+            "max_price": "2325",
         }]
     })
     monkeypatch.setattr(http_tools.httpx, "AsyncClient", FakeClient)
@@ -64,6 +67,8 @@ def test_mandi_adapter_maps_government_record(monkeypatch):
     ))
     assert result.ok is True
     assert result.data["modal_price"] == 2250
+    assert result.data["arrival_date"] == "06/10/2026"
+    assert result.data["market"] == "Sonipat"
     assert result.source.name == "Government OGD / AGMARKNET"
 
 
