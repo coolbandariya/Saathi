@@ -3,47 +3,77 @@ from typing import Any, Awaitable, Callable
 
 from .exotel_stream import decode_media, encode_media, parse_start
 
+
 async def run_exotel_session(
     websocket: Any,
     *,
     transcribe: Callable[[bytes, int], Awaitable[str]],
     respond: Callable[[str], Awaitable[str]],
     synthesize: Callable[[str, int], Awaitable[bytes]],
+    max_turn_seconds: float = 2.0,
 ) -> None:
-    """Run one bidirectional Exotel media session.
+    """Run one bounded-turn bidirectional Exotel media session.
 
-    The adapter deliberately keeps provider calls injected so tests can use deterministic
-    fakes and production can supply Sarvam realtime STT/TTS later.
+    Provider calls are injected so tests stay deterministic. The bridge does not
+    claim realtime behavior: it batches audio into short turns and flushes the
+    final partial turn on stop.
     """
-    stream_sid = None
+    if max_turn_seconds <= 0:
+        raise ValueError("max_turn_seconds must be positive")
+
+    stream_sid: str | None = None
     sample_rate = 8000
     audio_buffer = bytearray()
 
+    async def process_turn() -> None:
+        nonlocal audio_buffer
+        if not audio_buffer:
+            return
+        pcm = bytes(audio_buffer)
+        audio_buffer.clear()
+        transcript = await transcribe(pcm, sample_rate)
+        if not transcript.strip():
+            return
+        reply = await respond(transcript)
+        if not reply.strip():
+            return
+        audio = await synthesize(reply, sample_rate)
+        if stream_sid and audio:
+            await websocket.send(encode_media(stream_sid, audio))
+
     async for raw in websocket:
-        event = json.loads(raw)
+        try:
+            event = json.loads(raw)
+        except (TypeError, json.JSONDecodeError):
+            continue
+
         event_type = event.get("event")
+        if event_type == "connected":
+            continue
 
         if event_type == "start":
             start = parse_start(event)
+            if not start.stream_sid or not start.call_sid:
+                raise ValueError("invalid_exotel_start_event")
+            if start.sample_rate not in {8000, 16000, 24000}:
+                raise ValueError("unsupported_exotel_sample_rate")
             stream_sid, sample_rate = start.stream_sid, start.sample_rate
+            audio_buffer.clear()
             continue
 
         if event_type == "media":
-            audio_buffer.extend(decode_media(event))
-            # Keep this bounded. A realtime STT implementation should replace this
-            # accumulation with incremental websocket audio forwarding.
-            if len(audio_buffer) >= sample_rate * 2:
-                transcript = await transcribe(bytes(audio_buffer), sample_rate)
-                audio_buffer.clear()
-                if not transcript.strip():
-                    continue
-                reply = await respond(transcript)
-                if not reply.strip():
-                    continue
-                audio = await synthesize(reply, sample_rate)
-                if stream_sid and audio:
-                    await websocket.send(encode_media(stream_sid, audio))
+            try:
+                audio_buffer.extend(decode_media(event))
+            except (ValueError, TypeError):
+                continue
+            max_bytes = int(sample_rate * 2 * max_turn_seconds)
+            if len(audio_buffer) >= max_bytes:
+                await process_turn()
             continue
 
         if event_type == "stop":
+            await process_turn()
             break
+
+        # DTMF/mark events are deliberately ignored by the bounded MVP bridge.
+        # They remain part of the protocol surface for a future barge-in/handoff path.
