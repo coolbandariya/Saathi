@@ -152,5 +152,6 @@ def test_sarvam_stt_sends_keyterms(monkeypatch):
     asyncio.run(provider_adapters.SarvamSpeechToTextProvider(
         "key", "https://example.test", keyterms=["Sonipat", "गेहूं"]
     ).transcribe(b"audio", language="hi"))
-    assert "Sonipat" in captured["data"]["keyterms"]
-    assert "गेहूं" in captured["data"]["keyterms"]
+    import json
+    keyterms = json.loads(captured["data"]["keyterms"])
+    assert keyterms == ["Sonipat", "गेहूं"]
