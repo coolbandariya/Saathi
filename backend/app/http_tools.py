@@ -84,19 +84,19 @@ class DataGovMandiTool:
         self.api_base = api_base.rstrip("/")
         self.timeout_seconds = timeout_seconds
 
-    async def price(self, *, commodity: str, state: str, district: str | None = None) -> ToolResult:
+    async def price(self, *, commodity: str, state: str, district: str | None = None, market: str | None = None) -> ToolResult:
         url = f"{self.api_base}/{self.resource_id}"
-        filters = {
-            "State": state,
-            "Commodity": commodity,
-        }
+        filters = {"state.keyword": state, "commodity": commodity}
         if district:
-            filters["District"] = district
+            filters["district"] = district
+        if market:
+            filters["market"] = market
 
         params = {
             "api-key": self.api_key,
             "format": "json",
             "limit": 25,
+            "sort[arrival_date]": "desc",
             **{f"filters[{key}]": value for key, value in filters.items()},
         }
         try:
@@ -122,6 +122,12 @@ class DataGovMandiTool:
 
             record = records[0]
 
+            def field(*keys: str):
+                for key in keys:
+                    if record.get(key) not in (None, ""):
+                        return record[key]
+                return None
+
             def number(*keys: str) -> float | None:
                 for key in keys:
                     value = record.get(key)
@@ -133,9 +139,9 @@ class DataGovMandiTool:
                         continue
                 return None
 
-            modal = number("Modal_Price", "Modal Price", "modal_price")
-            minimum = number("Min_Price", "Min Price", "min_price")
-            maximum = number("Max_Price", "Max Price", "max_price")
+            modal = number("Modal_Price", "Modal Price", "modal_price", "Modal_x0020_Price")
+            minimum = number("Min_Price", "Min Price", "min_price", "Min_x0020_Price")
+            maximum = number("Max_Price", "Max Price", "max_price", "Max_x0020_Price")
             if modal is None:
                 return ToolResult(
                     ok=False,
@@ -153,8 +159,11 @@ class DataGovMandiTool:
             return ToolResult(
                 ok=True,
                 data={
-                    "commodity": record.get("Commodity", commodity),
-                    "market": record.get("Market", district or state),
+                    "commodity": field("commodity", "Commodity") or commodity,
+                    "market": field("market", "Market") or market or district or state,
+                    "district": field("district", "District") or district,
+                    "state": field("state", "State") or state,
+                    "arrival_date": field("arrival_date", "Arrival_Date"),
                     "min_price": minimum,
                     "modal_price": modal,
                     "max_price": maximum,
