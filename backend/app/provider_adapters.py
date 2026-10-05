@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 import httpx
 
 from .providers import ReasoningProvider, SpeechToTextProvider, TelephonyProvider, TextToSpeechProvider
@@ -157,7 +158,6 @@ class SafeProviderFactory:
 
 
 from dataclasses import dataclass
-import json
 
 @dataclass(frozen=True)
 class GeminiToolCall:
@@ -224,11 +224,19 @@ class GeminiToolRouter:
         for step in payload.get("steps", []):
             if step.get("type") != "function_call":
                 continue
+            name = str(step.get("name") or "")
+            if name not in {tool["name"] for tool in self.TOOLS}:
+                continue
             arguments = step.get("arguments") or {}
             if isinstance(arguments, str):
-                arguments = json.loads(arguments)
+                try:
+                    arguments = json.loads(arguments)
+                except json.JSONDecodeError:
+                    continue
+            if not isinstance(arguments, dict):
+                continue
             return GeminiToolCall(
-                name=str(step.get("name") or ""),
+                name=name,
                 arguments=arguments,
                 call_id=str(step.get("id") or ""),
             )
