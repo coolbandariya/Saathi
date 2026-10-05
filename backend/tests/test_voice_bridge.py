@@ -71,3 +71,23 @@ def test_voice_bridge_flushes_on_silence_before_max_turn():
         assert calls[0][1] < 8_000 * 2 * 2
 
     asyncio.run(run())
+
+
+def test_voice_bridge_clears_playback_when_caller_barges_in():
+    async def run():
+        import base64
+        speech = b"\x10\x00" * 1200
+        silence = b"\x00\x00" * 6000
+        ws = FakeWS([
+            json.dumps({"event": "start", "start": {"stream_sid": "MZ1", "call_sid": "CA1", "media_format": {"sample_rate": "8000"}}}),
+            json.dumps({"event": "media", "media": {"payload": base64.b64encode(speech).decode()}}),
+            json.dumps({"event": "media", "media": {"payload": base64.b64encode(silence).decode()}}),
+            json.dumps({"event": "media", "media": {"payload": base64.b64encode(speech).decode()}}),
+            json.dumps({"event": "stop"}),
+        ])
+        async def stt(audio, rate): return "नमस्ते"
+        async def respond(text): return "जी"
+        async def tts(text, rate): return b"reply"
+        await run_exotel_session(ws, transcribe=stt, respond=respond, synthesize=tts)
+        assert any(json.loads(item).get("event") == "clear" for item in ws.sent)
+    asyncio.run(run())
