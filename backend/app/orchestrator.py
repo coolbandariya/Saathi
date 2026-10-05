@@ -87,9 +87,13 @@ class Orchestrator:
             lowered = message.casefold()
             if any(x in lowered for x in ("मौसम", "बारिश", "weather", "rain")):
                 location = context.location
-                latitude = location.latitude if location else 28.99
-                longitude = location.longitude if location else 77.02
-                result = await self.weather.forecast(latitude=latitude, longitude=longitude)
+                if location is None:
+                    return self._outcome(
+                        intent=intent,
+                        reply="मौसम बताने के लिए आपका शहर या स्थान चाहिए। कृपया अपना जिला या स्थान बताइए।",
+                        confidence=0.72,
+                    )
+                result = await self.weather.forecast(latitude=location.latitude, longitude=location.longitude)
                 if result.ok:
                     d = result.data
                     probability = d.get("rain_probability_pct", d.get("next_24h_rain_probability_max", 0))
@@ -113,13 +117,25 @@ class Orchestrator:
                 )
 
             entities = extract_farming_entities(message)
-            commodity = entities.commodity or "Wheat"
-            state = entities.state or "Haryana"
-            district = entities.district or "Sonipat"
+            missing = []
+            if not entities.commodity:
+                missing.append("फसल")
+            if not entities.state:
+                missing.append("राज्य")
+            if not entities.district and not entities.market:
+                missing.append("जिला या मंडी")
+
+            if missing:
+                return self._outcome(
+                    intent=intent,
+                    reply="मंडी का सही सरकारी भाव बताने के लिए " + " और ".join(missing) + " बताइए।",
+                    confidence=0.78,
+                )
+
             result = await self.mandi.price(
-                commodity=commodity,
-                state=state,
-                district=district,
+                commodity=entities.commodity,
+                state=entities.state,
+                district=entities.district,
                 market=entities.market,
             )
             if result.ok:
