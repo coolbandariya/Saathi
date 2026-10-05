@@ -2,70 +2,83 @@
 
 ## Current release state
 
-The repository is consolidated on `main`. There are no open pull requests. The browser demo, deterministic routing, provenance contracts, Open-Meteo adapter, configurable government mandi adapter, Sarvam browser STT/TTS adapters, consent UI, escalation policy, webhook HMAC/idempotency contract, tests and CI are implemented.
+The non-Supabase runtime is consolidated on the active implementation branch. The browser demo, deterministic routing, provenance contracts, Open-Meteo adapter, configurable OGD/AGMARKNET adapter, Sarvam browser STT/TTS adapters, current Document AI adapter, executable Exotel WebSocket boundary, bounded-turn phone speech adapter, consent UI, escalation policy, webhook HMAC/idempotency contract, tests and CI configuration are implemented.
 
-The remaining work is deliberately ordered around one reliable vertical slice rather than adding more agents or dashboard features.
+The remaining work before Supabase is intentionally narrow: run the configured providers for real, measure the vertical slice, and prove the exact submitted build.
 
-## P0 — JAI prototype reliability (before submission)
+## P0 — Non-Supabase completion
 
-- [x] Consolidate stacked PR history into `main`
 - [x] Responsive landing page + operator dashboard
 - [x] Browser microphone capture path
 - [x] Deterministic Hindi/Hinglish intent baseline
+- [x] 120-case synthetic intent benchmark
 - [x] Source provenance + demo/live labelling
 - [x] Consent and human-escalation UI
-- [ ] Green backend + frontend CI on the final commit (GitHub Actions run visibility is currently unavailable through the connected GitHub API)
-- [ ] Run the browser voice loop with real Sarvam credentials
-- [ ] Query live Open-Meteo and capture provenance
-- [x] Pin and schema-correct the current OGD/AGMARKNET resource adapter for Sonipat/Wheat; live credential smoke test remains environment-gated
-- [x] Expand the deterministic intent evaluation set to 120 synthetic Hindi/Hinglish cases
-- [ ] Measure live speech WER, tool-selection accuracy, grounded-answer correctness and end-to-end latency with provider credentials
-- [ ] Record the exact submitted build and preserve Git evidence
+- [x] Capability-aware readiness endpoint
+- [x] Current OGD/AGMARKNET field/resource contract
+- [x] Current Sarvam Document AI job lifecycle
+- [x] Exotel AgentStream media primitives
+- [x] Executable Exotel WebSocket route
+- [x] Bounded-turn phone STT → orchestrator → TTS adapter
+- [x] Gemini structured tool-call boundary with allow-listed tool validation
+- [x] Frontend lint/typecheck/build and dependency-audit workflow
+- [ ] Run provider-backed browser voice with real Sarvam credentials
+- [ ] Query live Open-Meteo and capture provenance in the submitted environment
+- [ ] Query live OGD/AGMARKNET and verify market/date/entity selection
+- [ ] Run a real Exotel call against a public `wss://` deployment
+- [ ] Measure speech WER, intent/entity/tool accuracy, grounded-answer correctness and end-to-end latency
+- [ ] Record the exact submitted build/commit and preserve Git evidence
 
-## P1 — Make the vertical slice production-shaped
+## P1 — Persistence and human workflow
 
-1. Supabase: reactivate the project or provision capacity; apply migrations; test RLS with multiple households.
-2. Replace in-memory webhook idempotency with a durable store.
-3. Replace the thin Gemini adapter with structured tool calls/state, keeping factual tools authoritative.
-4. Implement a real volunteer handoff case record with assignment, status and resolution.
-5. Add document upload/OCR with explicit consent and safe extraction.
-6. Add task/reminder persistence only after consent and quiet-hour rules are enforced.
-7. Add automated browser/API integration tests for the complete voice-to-tool path.
+After the non-Supabase release gate passes:
 
-## P2 — Phone-first runtime
+1. Connect Supabase through repository interfaces.
+2. Apply and audit RLS with multiple households.
+3. Replace in-memory webhook idempotency with durable storage.
+4. Add a durable volunteer case record: assignment, status, notes and resolution.
+5. Add consented household memory and task/reminder persistence with quiet hours.
+6. Add document metadata/storage persistence without storing unnecessary sensitive content.
+7. Add integration tests for tenant isolation and consent enforcement.
 
-1. Implement the public Exotel `wss://` media endpoint.
-2. Decode/validate inbound audio frames and connect them to realtime STT/TTS.
-3. Test missed-call -> callback -> speech -> tool -> spoken response end to end.
-4. Verify provider signatures/webhooks and durable deduplication.
-5. Only then claim live phone AI in the submission.
+## P2 — Low-latency phone runtime
 
-## P3 — Language and factual depth
+The current phone endpoint is executable but intentionally bounded-turn. For production voice-agent behavior:
 
-- Benchmark Hindi vs noisy/Hinglish speech.
-- Benchmark Haryanvi-accented Hindi before making any Haryanvi support claim.
-- Build a versioned government scheme catalogue with deterministic eligibility rules.
-- Add verified mandi date/market/entity handling rather than returning the first matching record.
-- Add weather caching and location provenance where consented location is available.
+1. Replace REST STT batching with Sarvam Realtime STT WebSocket.
+2. Use VAD/partial transcripts for turn detection and barge-in.
+3. Stream Sarvam TTS audio instead of waiting for a whole utterance.
+4. Keep Exotel raw Linear16 audio at the negotiated 8/16/24 kHz rate.
+5. Add reconnect/failover behavior and call-level observability.
+6. Only claim live phone AI after a real call completes the full round trip.
 
-## Explicitly do not add yet
+## P3 — Factual depth and language robustness
 
-- More generic agents
-- Blockchain/NFT features
-- Fake GPS
-- Fake payments
-- Unverified Haryanvi support
-- Generic RAG without an authoritative source
-- Heavy 3D/visual effects
-- A public control centre or admin surface
+- Build a versioned government scheme catalogue with source URL, effective date and deterministic eligibility rules.
+- Add verified mandi market/date/entity selection instead of taking the first record blindly.
+- Add weather caching and explicit consented location provenance.
+- Expand evaluation to 300–500 synthetic utterances plus recorded/synthetic audio fixtures.
+- Benchmark noisy Hindi/Hinglish and Haryanvi-accented Hindi before making dialect claims.
+- Add document confidence/field-source handling before any automated downstream action.
+
+## Explicitly avoid
+
+- generic agent proliferation without a user-facing workflow
+- unverified Haryanvi support
+- generic RAG as a substitute for authoritative government data
+- fake GPS, fake payments or fake application submission
+- autonomous medical diagnosis/prescribing
+- heavy visual effects that distract from the voice-to-action story
 
 ## Release gate
 
 A submission build is ready only when:
-- frontend build passes
+
 - backend tests pass
-- readiness reflects actual provider configuration
+- frontend lint, typecheck and build pass
+- readiness accurately reports configured capabilities
 - at least one live factual tool has provenance
 - browser voice works with configured STT/TTS
+- if phone AI is claimed, a real Exotel call completes the round trip
 - no secrets or real PII are committed
 - the demo video shows the same build/commit being submitted
