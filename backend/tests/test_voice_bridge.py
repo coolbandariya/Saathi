@@ -76,7 +76,7 @@ def test_voice_bridge_flushes_on_silence_before_max_turn():
 def test_voice_bridge_clears_playback_when_caller_barges_in():
     async def run():
         import base64
-        speech = b"\x10\x00" * 1200
+        speech = b"\x00\x10" * 1200
         silence = b"\x00\x00" * 6000
         ws = FakeWS([
             json.dumps({"event": "start", "start": {"stream_sid": "MZ1", "call_sid": "CA1", "media_format": {"sample_rate": "8000"}}}),
