@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     exotel_account_sid: str | None = None
     exotel_subdomain: str = "api.in.exotel.com"
     exotel_virtual_number: str | None = None
+    exotel_stream_url: str | None = None
     telephony_webhook_secret: str | None = None
     demo_mode: bool = True
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
