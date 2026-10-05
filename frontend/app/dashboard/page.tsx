@@ -27,7 +27,7 @@ type Result = {
 
 const scenarios = [
   { id: "mandi", label: "Mandi bhav", text: "सोनीपत मंडी में गेहूं का आज क्या भाव है?", icon: Wheat },
-  { id: "weather", label: "Weather", text: "कल बारिश होगी?", icon: CloudRain },
+  { id: "weather", label: "Weather", text: "अगले 24 घंटे में बारिश की संभावना कितनी है?", icon: CloudRain },
   { id: "scheme", label: "Yojana", text: "मेरे लिए किसान की सरकारी योजना बताओ", icon: ShieldCheck },
   { id: "human", label: "Human help", text: "मुझे किसी इंसान से बात करनी है", icon: UserRound },
 ] as const;
