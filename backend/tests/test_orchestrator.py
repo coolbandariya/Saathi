@@ -67,3 +67,19 @@ def test_farmer_scheme_uses_official_pmkisan_source():
     assert outcome.result.source is not None
     assert "pmkisan.gov.in" in outcome.result.source.url
     assert outcome.tool_name == "get_pmkisan_info"
+
+
+def test_combined_mandi_and_weather_returns_both_evidence_paths():
+    outcome = asyncio.run(Orchestrator().handle(
+        "सोनीपत में गेहूं का मंडी भाव और अगले 24 घंटे में बारिश का chance?",
+        AgentContext(
+            household_id="h1",
+            location=LocationContext(latitude=28.9931, longitude=77.0151, label="Sonipat"),
+        ),
+    ))
+    assert outcome.intent == "farming"
+    assert outcome.tool_name == "get_mandi_price+get_weather"
+    assert len(outcome.results) == 2
+    assert all(result.source is not None for result in outcome.results)
+    assert "मॉडल भाव" in outcome.reply
+    assert "बारिश" in outcome.reply
