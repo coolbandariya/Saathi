@@ -22,7 +22,7 @@ def test_weather_uses_explicit_location_context():
 def test_scheme_path_is_deterministic():
     outcome = asyncio.run(Orchestrator().handle("मुझे किसान योजना बताओ", AgentContext(household_id="h1")))
     assert outcome.intent == "scheme"
-    assert "योजनाओं" in outcome.reply
+    assert "PM-KISAN" in outcome.reply
     assert outcome.escalated is False
 
 
