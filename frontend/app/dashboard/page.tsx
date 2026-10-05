@@ -39,7 +39,7 @@ const judgeSteps = [
 ] as const;
 
 export default function Dashboard() {
-  const [message, setMessage] = useState(scenarios[0].text);
+  const [message, setMessage] = useState<string>(scenarios[0].text);
   const [scenario, setScenario] = useState("mandi");
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
