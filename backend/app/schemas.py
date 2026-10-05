@@ -39,8 +39,6 @@ class ConversationResponse(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     tool_name: str | None = None
     latency_ms: float | None = Field(default=None, ge=0.0)
-    tool_name: str | None = None
-    latency_ms: float | None = Field(default=None, ge=0.0)
 
 
 class AgentRequest(ConversationRequest):
