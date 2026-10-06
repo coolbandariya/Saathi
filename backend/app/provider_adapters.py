@@ -1,4 +1,6 @@
+import asyncio
 import base64
+import json
 import httpx
 
 from .providers import ReasoningProvider, SpeechToTextProvider, TelephonyProvider, TextToSpeechProvider
@@ -24,6 +26,19 @@ class GeminiInteractionsProvider:
         return str(data.get("output_text") or "")
 
 
+async def _request_with_retry(client, method: str, url: str, *, attempts: int = 3, **kwargs):
+    for attempt in range(attempts):
+        try:
+            response = await client.request(method, url, **kwargs)
+            if response.status_code not in {429, 500, 502, 503, 504} or attempt == attempts - 1:
+                return response
+        except httpx.RequestError:
+            if attempt == attempts - 1:
+                raise
+        await asyncio.sleep(min(2 ** attempt, 4))
+    raise RuntimeError("provider_request_failed")
+
+
 class SarvamSpeechToTextProvider:
     def __init__(self, api_key: str, endpoint: str, model: str = "saaras:v4", mode: str = "transcribe", timeout_seconds: float = 20.0) -> None:
         self.api_key, self.endpoint, self.model, self.mode, self.timeout_seconds = api_key, endpoint, model, mode, timeout_seconds
@@ -31,11 +46,11 @@ class SarvamSpeechToTextProvider:
     async def transcribe(self, audio: bytes, *, language: str) -> str:
         language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            response = await client.post(
-                self.endpoint,
+            response = await _request_with_retry(
+                client, "POST", self.endpoint,
                 headers={"api-subscription-key": self.api_key},
                 files={"file": ("caller.webm", audio, "audio/webm")},
-                data={"model": self.model, "mode": self.mode, "language_code": language_code},
+                data={"model": self.model, "mode": "codemix", "language_code": language_code},
             )
             response.raise_for_status()
             payload = response.json()
@@ -49,10 +64,10 @@ class SarvamTextToSpeechProvider:
     async def synthesize(self, text: str, *, language: str) -> bytes:
         language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            response = await client.post(
-                self.endpoint,
+            response = await _request_with_retry(
+                client, "POST", self.endpoint,
                 headers={"api-subscription-key": self.api_key, "Content-Type": "application/json"},
-                json={"text": text[:2500], "model": self.model, "speaker": self.speaker, "language_code": language_code},
+                json={"text": text[:2500], "model": self.model, "speaker": self.speaker, "language_code": language_code, "output_audio_codec": "wav"},
             )
             response.raise_for_status()
             body = response.json()
@@ -140,3 +155,89 @@ class SafeProviderFactory:
     @staticmethod
     def sarvam_tts(api_key: str | None, endpoint: str, model: str, speaker: str) -> TextToSpeechProvider | None:
         return SarvamTextToSpeechProvider(api_key, endpoint, model, speaker) if api_key else None
+
+
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class GeminiToolCall:
+    name: str
+    arguments: dict
+    call_id: str
+
+
+class GeminiToolRouter:
+    """Stateless Gemini Interactions function-calling boundary.
+
+    The router only chooses a declared tool. Tool execution remains in Saathi,
+    so factual authority stays with our adapters.
+    """
+
+    TOOLS = [
+        {
+            "type": "function",
+            "name": "get_weather",
+            "description": "Retrieve verified weather for caller context.",
+            "parameters": {
+                "type": "object",
+                "properties": {"latitude": {"type": "number"}, "longitude": {"type": "number"}},
+                "required": ["latitude", "longitude"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "get_mandi_price",
+            "description": "Retrieve verified daily mandi price data.",
+            "parameters": {
+                "type": "object",
+                "properties": {"commodity": {"type": "string"}, "state": {"type": "string"}, "district": {"type": "string"}},
+                "required": ["commodity", "state"],
+            },
+        },
+        {
+            "type": "function",
+            "name": "request_human",
+            "description": "Escalate when the caller asks for a person or automation is unsafe/uncertain.",
+            "parameters": {"type": "object", "properties": {"reason": {"type": "string"}}, "required": ["reason"]},
+        },
+    ]
+
+    def __init__(self, api_key: str, model: str = "gemini-3.8-flash", timeout_seconds: float = 15.0) -> None:
+        self.api_key, self.model, self.timeout_seconds = api_key, model, timeout_seconds
+
+    async def choose(self, user_text: str) -> GeminiToolCall | None:
+        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            response = await _request_with_retry(
+                client, "POST",
+                "https://generativelanguage.googleapis.com/v1beta/interactions",
+                headers={"x-goog-api-key": self.api_key, "Content-Type": "application/json"},
+                json={
+                    "model": self.model,
+                    "store": False,
+                    "input": user_text,
+                    "tools": self.TOOLS,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+
+        for step in payload.get("steps", []):
+            if step.get("type") != "function_call":
+                continue
+            name = str(step.get("name") or "")
+            if name not in {tool["name"] for tool in self.TOOLS}:
+                continue
+            arguments = step.get("arguments") or {}
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except json.JSONDecodeError:
+                    continue
+            if not isinstance(arguments, dict):
+                continue
+            return GeminiToolCall(
+                name=name,
+                arguments=arguments,
+                call_id=str(step.get("id") or ""),
+            )
+        return None

@@ -30,6 +30,9 @@ class FakeClient:
     async def get(self, *args, **kwargs):
         return self.response
 
+    async def request(self, method, *args, **kwargs):
+        return self.response
+
     async def post(self, *args, **kwargs):
         return self.response
 
@@ -51,11 +54,14 @@ def test_open_meteo_adapter_preserves_coordinates(monkeypatch):
 def test_mandi_adapter_maps_government_record(monkeypatch):
     FakeClient.response = FakeResponse({
         "records": [{
-            "Commodity": "Wheat",
-            "Market": "Sonipat",
-            "Min_Price": "2100",
-            "Modal_Price": "2250",
-            "Max_Price": "2325",
+            "state": "Haryana",
+            "district": "Sonipat",
+            "market": "Sonipat",
+            "commodity": "Wheat",
+            "arrival_date": "06/10/2026",
+            "min_price": "2100",
+            "modal_price": "2250",
+            "max_price": "2325",
         }]
     })
     monkeypatch.setattr(http_tools.httpx, "AsyncClient", FakeClient)
@@ -64,6 +70,8 @@ def test_mandi_adapter_maps_government_record(monkeypatch):
     ))
     assert result.ok is True
     assert result.data["modal_price"] == 2250
+    assert result.data["arrival_date"] == "06/10/2026"
+    assert result.data["market"] == "Sonipat"
     assert result.source.name == "Government OGD / AGMARKNET"
 
 
@@ -117,3 +125,18 @@ def test_exotel_voice_ai_call_sends_destination_and_stream(monkeypatch):
     assert captured["data"]["To"] == "+919999999999"
     assert captured["data"]["StreamUrl"] == "wss://voice.example.test/stream"
     assert captured["data"]["StreamType"] == "bidirectional"
+
+def test_gemini_tool_router_reads_function_call_steps(monkeypatch):
+    class GeminiResponse(FakeResponse):
+        def __init__(self):
+            super().__init__({"steps": [{"type": "function_call", "id": "fc-1", "name": "get_mandi_price", "arguments": {"commodity": "Wheat", "state": "Haryana"}}]})
+
+    class GeminiClient(FakeClient):
+        response = GeminiResponse()
+
+    monkeypatch.setattr(provider_adapters.httpx, "AsyncClient", GeminiClient)
+    call = asyncio.run(provider_adapters.GeminiToolRouter("key").choose("Sonipat mandi wheat price"))
+    assert call is not None
+    assert call.name == "get_mandi_price"
+    assert call.arguments["commodity"] == "Wheat"
+    assert call.call_id == "fc-1"
