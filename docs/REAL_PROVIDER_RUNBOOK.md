@@ -74,3 +74,30 @@ Freeze one commit and use that same commit for:
 - JAI submission
 
 Never record a demo from one build and submit another.
+
+
+## 6. Voice benchmark evidence
+
+Follow `docs/VOICE_BENCHMARK.md`. Do not use provider-contract tests as production metrics.
+
+Minimum real-call evidence:
+- 30+ turns
+- Hindi + Hinglish coverage
+- combined mandi/weather
+- missing-entity clarification
+- explicit human escalation
+- at least one barge-in and successful recovery
+
+Store only non-sensitive benchmark metadata in the repo. Do not commit caller phone numbers, raw recordings, API keys, Aadhaar/OTP data, or other personal information.
+
+## 7. Production safety checks
+
+Before enabling realtime:
+
+- `/health/ready` must report `telephony_realtime=true`.
+- Exotel StreamUrl must be public `wss://`.
+- Sarvam realtime STT must use 8 kHz or 16 kHz PCM.
+- Telephony TTS must use the negotiated 8/16 kHz rate.
+- Stop events must close/finalize the STT session.
+- Caller speech during playback must clear playback and cancel the pending response.
+- Provider failure must never be converted into a fabricated factual answer.
