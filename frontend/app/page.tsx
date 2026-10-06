@@ -2,6 +2,7 @@
 import Link from "next/link";
 import "./home.css";
 import AcidSquares from "../components/AcidSquares";
+import Stepper, { Step } from "../components/Stepper";
 
 import { motion } from "motion/react";
 import { ArrowRight, ArrowUpRight, AudioLines, Check, CheckCircle2, Database, Languages, Mic2, PhoneCall, ShieldCheck, Sparkles, Wheat, Zap } from "lucide-react";
