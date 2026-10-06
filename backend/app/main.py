@@ -9,7 +9,7 @@ from .schemas import AgentRequest, ConversationRequest, ConversationResponse, Lo
 from .orchestrator import AgentContext, Orchestrator
 from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
-from .observability import get_correlation_id, set_correlation_id
+from .observability import emit_event, get_correlation_id, metrics_snapshot, record_request, set_correlation_id
 from .telephony_voice import SarvamTelephonySpeechProvider
 from .provider_adapters import SarvamRealtimeSTTSession, SarvamRealtimeTTSProvider
 from .voice import VoiceGateway
@@ -37,7 +37,18 @@ voice_gateway = VoiceGateway(settings, orchestrator)
 async def correlation_middleware(request: Request, call_next):
     incoming = request.headers.get("X-Correlation-ID")
     correlation_id = set_correlation_id(incoming)
-    response = await call_next(request)
+    started = perf_counter()
+    emit_event("request.started", method=request.method, route=request.url.path)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        latency_ms = (perf_counter() - started) * 1000
+        record_request(request.url.path, 500, latency_ms)
+        emit_event("request.failed", method=request.method, route=request.url.path, status_code=500, latency_ms=round(latency_ms, 2), error_type=type(exc).__name__)
+        raise
+    latency_ms = (perf_counter() - started) * 1000
+    record_request(request.url.path, response.status_code, latency_ms)
+    emit_event("request.completed", method=request.method, route=request.url.path, status_code=response.status_code, latency_ms=round(latency_ms, 2))
     response.headers["X-Correlation-ID"] = correlation_id
     return response
 
@@ -50,6 +61,11 @@ def health() -> dict[str, str | bool]:
 @app.get("/health/live")
 def liveness() -> dict[str, str]:
     return {"status": "alive"}
+
+
+@app.get("/health/metrics")
+def metrics() -> dict[str, object]:
+    return metrics_snapshot()
 
 
 @app.get("/health/ready")
