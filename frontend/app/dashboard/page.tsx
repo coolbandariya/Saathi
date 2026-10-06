@@ -87,15 +87,19 @@ export default function Dashboard() {
     return () => controller.abort();
   }, []);
 
-  const trace = useMemo(() => [
-    ["01", "Call / request received", true],
-    ["02", "Language + intent detected", true],
-    ["03", "Specialist agent selected", !!result],
-    ["04", "Verified tool boundary", !!result],
-    ["05", "Source + timestamp attached", !!result?.source || !!result?.sources?.length],
-    ["06", "Household memory", memoryConsent && !!result],
-    ["07", "Human fallback", result?.intent === "human"],
-  ] as const, [result, memoryConsent]);
+  const trace = useMemo(() => {
+    const tool = result?.tool_name || "pending";
+    const hasEvidence = !!result?.source || !!result?.sources?.length;
+    const providerState = hasEvidence ? "Evidence attached" : result ? "Awaiting live source" : "Waiting for request";
+    return [
+      ["01", "Request received", true],
+      ["02", result ? `Intent · ${result.intent}` : "Language + intent", !!result],
+      ["03", result ? `Capability · ${tool}` : "Specialist capability", !!result],
+      ["04", result ? "Policy boundary checked" : "Policy boundary", !!result],
+      ["05", providerState, hasEvidence],
+      ["06", result?.escalated ? "Escalation triggered" : "Human fallback ready", !!result?.escalated],
+    ] as const;
+  }, [result]);
 
   const selectScenario = (id: string) => {
     const item = scenarios.find((entry) => entry.id === id) ?? scenarios[0];
