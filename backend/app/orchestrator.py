@@ -30,6 +30,23 @@ class AgentOutcome:
     results: tuple[ToolResult, ...] = ()
 
 
+class ToolPolicy:
+    """Server-side capability gate: intent may suggest, policy decides what can run."""
+
+    ALLOWED: dict[Intent, frozenset[str]] = {
+        "farming": frozenset({"get_mandi_price", "get_weather"}),
+        "scheme": frozenset({"get_pmkisan_info"}),
+        "human": frozenset({"request_human"}),
+        "document": frozenset(),
+        "task": frozenset(),
+        "general": frozenset(),
+    }
+
+    @classmethod
+    def permits(cls, intent: Intent, tool_name: str) -> bool:
+        return tool_name in cls.ALLOWED.get(intent, frozenset())
+
+
 class Orchestrator:
     def __init__(self) -> None:
         settings = get_settings()
@@ -49,6 +66,11 @@ class Orchestrator:
             )
         self.escalation = EscalationPolicy()
         self.scheme = PMKisanSchemeTool()
+
+    def _tool_name(self, intent: Intent, tool_name: str) -> str:
+        if not ToolPolicy.permits(intent, tool_name):
+            raise RuntimeError(f"tool_not_permitted:{intent}:{tool_name}")
+        return tool_name
 
     def _outcome(
         self,
@@ -88,7 +110,7 @@ class Orchestrator:
                 reply="ठीक है। मैं आपकी बात volunteer सहायता के लिए भेजने की तैयारी कर रहा हूँ।",
                 confidence=1.0,
                 explicit_human_request=True,
-                tool_name="request_human",
+                tool_name=self._tool_name(intent, "request_human"),
             )
 
         if intent == "farming":
@@ -102,7 +124,7 @@ class Orchestrator:
                         intent=intent,
                         reply="मंडी का भाव तो देखा जा सकता है, लेकिन मौसम के लिए आपका शहर या स्थान चाहिए। कृपया अपना जिला या स्थान बताइए।",
                         confidence=0.72,
-                        tool_name="get_weather",
+                        tool_name=self._tool_name(intent, "get_weather"),
                     )
                 entities = extract_farming_entities(message)
                 missing = []
@@ -117,7 +139,7 @@ class Orchestrator:
                         intent=intent,
                         reply="मंडी और मौसम दोनों सही बताने के लिए " + " और ".join(missing) + " बताइए।",
                         confidence=0.78,
-                        tool_name="get_mandi_price",
+                        tool_name=self._tool_name(intent, "get_mandi_price"),
                     )
                 weather_result = await self.weather.forecast(latitude=location.latitude, longitude=location.longitude)
                 mandi_result = (
@@ -241,7 +263,7 @@ class Orchestrator:
                 reply="आधिकारिक PM-KISAN जानकारी के अनुसार पात्र landholding farmer families के लिए सालाना ₹6,000 तीन बराबर किस्तों में दिए जाते हैं और registered farmers के लिए eKYC mandatory है। अंतिम eligibility सरकार की scheme guidelines और verification पर निर्भर है।",
                 result=result,
                 confidence=0.96,
-                tool_name="get_pmkisan_info",
+                tool_name=self._tool_name(intent, "get_pmkisan_info"),
             )
 
         replies = {
