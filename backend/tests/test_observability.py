@@ -23,3 +23,11 @@ def test_correlation_id_is_generated_when_missing() -> None:
     assert response.status_code == 200
     assert response.headers["X-Correlation-ID"]
     assert response.json()["correlation_id"] == response.headers["X-Correlation-ID"]
+
+
+def test_health_metrics_endpoint_is_safe_and_structured() -> None:
+    response = TestClient(app).get("/health/metrics")
+    assert response.status_code == 200
+    body = response.json()
+    assert "requests" in body
+    assert "latency_ms" in body
