@@ -46,3 +46,32 @@ Before recording the final demo, freeze provider/model versions and record:
 - provider error rate and successful-turn rate
 
 Every reported number must include dataset size, collection date, environment, provider/model version, and known limitations.
+
+
+## Adversarial / safety regression suite
+
+The orchestrator regression suite must also cover:
+- missing farming entities → clarification, never defaults
+- combined mandi + weather → both capabilities execute or each failure is disclosed
+- explicit human request → immediate escalation
+- adversarial wording such as “agent नहीं, इंसान चाहिए” → human intent
+- cross-intent capability attempts → server-side policy denial
+- partial provider failure → missing value is explicitly disclosed
+- ambiguous equal-scoring mandi records → no arbitrary selection
+- demo provider output → visibly labelled as demo, never live fact
+
+These are release gates, not optional examples.
+
+## Release gates
+
+A candidate build is submission-ready only when:
+1. CI is green.
+2. Deterministic intent benchmark remains >= 95%.
+3. Farming entity benchmark remains >= 95%.
+4. Adversarial regression tests pass.
+5. No live claim is emitted without a source record.
+6. Combined requests disclose partial provider failures.
+7. Human escalation remains deterministic for explicit requests.
+8. Mandi records pass entity matching and ambiguity checks.
+9. Real provider voice metrics are recorded before claiming live telephony performance.
+10. Supabase persistence is not enabled until the provider-backed vertical slice is frozen.
