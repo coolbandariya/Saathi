@@ -146,8 +146,12 @@ class DataGovMandiTool:
                     score += 5
                 return score
 
-            record = max(records, key=score)
-            if score(record) < 7:
+            scored_records = sorted(((score(record), record) for record in records), key=lambda item: item[0], reverse=True)
+            best_score, record = scored_records[0]
+            second_score = scored_records[1][0] if len(scored_records) > 1 else -1
+            # Never silently choose between nearly-equal markets. Ambiguity is safer than a plausible-looking price.
+            if best_score < 7:
+
                 return ToolResult(
                     ok=False,
                     error_code="MANDI_ENTITY_MISMATCH",
@@ -158,6 +162,20 @@ class DataGovMandiTool:
                         url=url,
                         retrieved_at=datetime.now(timezone.utc),
                         freshness_note="Government dataset returned records, but none matched the requested commodity/location strongly enough.",
+                    ),
+                )
+
+            if second_score >= 0 and best_score == second_score and requested_market:
+                return ToolResult(
+                    ok=False,
+                    error_code="MANDI_AMBIGUOUS_MARKET",
+                    retryable=False,
+                    data={"commodity": commodity, "state": state, "district": district, "market": market},
+                    source=SourceRecord(
+                        name="Government OGD / AGMARKNET",
+                        url=url,
+                        retrieved_at=datetime.now(timezone.utc),
+                        freshness_note="Multiple returned records matched the requested market equally; no price was selected without a stronger date/record tie-break.",
                     ),
                 )
 
