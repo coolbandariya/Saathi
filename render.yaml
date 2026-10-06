@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: saathi-api
+    runtime: docker
+    rootDir: backend
+    healthCheckPath: /health/ready
+    envVars:
+      - key: DEMO_MODE
+        value: "false"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: MANDI_API_KEY
+        sync: false
+      - key: MANDI_RESOURCE_ID
+        sync: false
+      - key: EXOTEL_API_KEY
+        sync: false
+      - key: EXOTEL_API_TOKEN
+        sync: false
+      - key: EXOTEL_ACCOUNT_SID
+        sync: false
+      - key: EXOTEL_VIRTUAL_NUMBER
+        sync: false
+      - key: EXOTEL_STREAM_URL
+        sync: false
+      - key: TELEPHONY_WEBHOOK_SECRET
+        sync: false
