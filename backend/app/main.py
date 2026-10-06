@@ -1,17 +1,18 @@
 from base64 import b64encode
+from hmac import compare_digest
 from time import perf_counter
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .schemas import AgentRequest, ConversationRequest, ConversationResponse, LocationContext, VoiceTurnResponse
+from .schemas import AgentRequest, CallRequest, ConversationRequest, ConversationResponse, LocationContext, VoiceTurnResponse
 from .orchestrator import AgentContext, Orchestrator
 from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
 from .observability import emit_event, get_correlation_id, metrics_snapshot, record_request, set_correlation_id
 from .telephony_voice import SarvamTelephonySpeechProvider
-from .provider_adapters import SarvamRealtimeSTTSession, SarvamRealtimeTTSProvider
+from .provider_adapters import ExotelTelephonyProvider, SarvamRealtimeSTTSession, SarvamRealtimeTTSProvider
 from .voice import VoiceGateway
 from .voice_bridge import run_exotel_realtime_session, run_exotel_session
 from .webhook_events import InMemoryWebhookEventStore, derive_event_id
@@ -240,6 +241,46 @@ async def voice_turn(
         tool_name=turn.outcome.tool_name,
         latency_ms=round((perf_counter() - started) * 1000, 2),
     )
+
+
+@app.post("/api/v1/calls")
+async def place_outbound_call(
+    payload: CallRequest,
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict[str, object]:
+    if not payload.consent:
+        raise HTTPException(status_code=400, detail="explicit_outbound_call_consent_required")
+    if not payload.to.replace("+", "").isdigit():
+        raise HTTPException(status_code=422, detail="invalid_phone_number")
+    if settings.demo_mode:
+        emit_event("call.demo", channel="exotel", realtime=payload.realtime_voice_ai)
+        return {"status": "demo", "call_id": "demo-call-accepted", "provider": "exotel", "realtime": payload.realtime_voice_ai}
+    token = authorization.removeprefix("Bearer ").strip() if authorization else ""
+    if not settings.call_api_token or not compare_digest(token, settings.call_api_token):
+        raise HTTPException(status_code=401, detail="call_api_unauthorized")
+    required = (settings.exotel_account_sid, settings.exotel_api_key, settings.exotel_api_token, settings.exotel_virtual_number)
+    if not all(required):
+        raise HTTPException(status_code=503, detail="telephony_provider_not_configured")
+    provider = ExotelTelephonyProvider(
+        account_sid=settings.exotel_account_sid,
+        api_key=settings.exotel_api_key,
+        api_token=settings.exotel_api_token,
+        caller_id=settings.exotel_virtual_number,
+        host=settings.exotel_subdomain,
+    )
+    if payload.realtime_voice_ai:
+        if not settings.exotel_stream_url:
+            raise HTTPException(status_code=503, detail="realtime_stream_not_configured")
+        call_id = await provider.place_voice_ai_call(
+            to=payload.to,
+            stream_url=settings.exotel_stream_url,
+            callback_url=payload.callback_url,
+        )
+    else:
+        call_id = await provider.place_call(to=payload.to, callback_url=payload.callback_url)
+    emit_event("call.placed", channel="exotel", call_id=call_id, realtime=payload.realtime_voice_ai)
+    return {"status": "accepted", "call_id": call_id, "provider": "exotel", "realtime": payload.realtime_voice_ai}
 
 
 @app.websocket("/api/v1/telephony/stream")
