@@ -155,3 +155,27 @@ def test_sarvam_stt_sends_keyterms(monkeypatch):
     import json
     keyterms = json.loads(captured["data"]["keyterms"])
     assert keyterms == ["Sonipat", "गेहूं"]
+
+
+def test_realtime_tts_accepts_only_supported_telephony_rates():
+    from app.provider_adapters import SarvamRealtimeTTSProvider
+    provider = SarvamRealtimeTTSProvider("key", sample_rate=8000)
+    assert provider.sample_rate == 8000
+    try:
+        SarvamRealtimeTTSProvider("key", sample_rate=11025)
+    except ValueError as exc:
+        assert str(exc) == "sarvam_tts_unsupported_sample_rate"
+    else:
+        raise AssertionError("unsupported sample rate was accepted")
+
+
+def test_exotel_voice_ai_requires_secure_stream_url():
+    provider = provider_adapters.ExotelTelephonyProvider(
+        account_sid="sid", api_key="key", api_token="token", caller_id="number"
+    )
+    try:
+        asyncio.run(provider.place_voice_ai_call(to="+911234567890", stream_url="ws://unsafe.example"))
+    except ValueError as exc:
+        assert str(exc) == "Exotel Voice AI StreamUrl must use wss://"
+    else:
+        raise AssertionError("insecure stream URL was accepted")
