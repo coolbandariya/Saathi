@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
+import SiteNav from "../../components/SiteNav";
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
   CloudRain, Languages, MapPin, Mic2, PhoneCall, Play,
@@ -226,16 +227,7 @@ export default function Dashboard() {
 
   return (
     <main className="command-shell">
-      <nav className="command-nav">
-        <Link href="/" className="command-brand">
-          <span><Mic2 size={17} /></span>saathi<span className="brand-dot">.</span>
-        </Link>
-        <div className="command-nav-meta">
-          <span className="connection"><i /> {apiOnline ? (apiReady ? "API ready" : "API online · providers gated") : "API offline"}</span>
-          <span className="nav-divider" />
-          <span className="operator"><UserRound size={14} /> Operator</span>
-        </div>
-      </nav>
+      <SiteNav variant="dashboard" status={apiOnline ? (apiReady ? "API ready" : "API online · providers gated") : "API offline"} />
 
       <div className="command-wrap">
         <header className="command-header">
