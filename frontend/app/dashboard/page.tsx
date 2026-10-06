@@ -90,14 +90,16 @@ export default function Dashboard() {
   const trace = useMemo(() => {
     const tool = result?.tool_name || "pending";
     const hasEvidence = !!result?.source || !!result?.sources?.length;
-    const providerState = hasEvidence ? "Evidence attached" : result ? "Awaiting live source" : "Waiting for request";
+    const providerState = hasEvidence ? "Evidence + provenance attached" : result ? "No live evidence attached" : "Waiting for request";
     return [
       ["01", "Request received", true],
       ["02", result ? `Intent · ${result.intent}` : "Language + intent", !!result],
       ["03", result ? `Capability · ${tool}` : "Specialist capability", !!result],
       ["04", result ? "Policy boundary checked" : "Policy boundary", !!result],
       ["05", providerState, hasEvidence],
-      ["06", result?.escalated ? "Escalation triggered" : "Human fallback ready", !!result?.escalated],
+      ["06", result?.escalated ? "Human escalation selected" : result ? "Grounded response selected" : "Response policy", !!result],
+      ["07", result ? `Sources · ${result.sources?.length || (result.source ? 1 : 0)}` : "Source count", hasEvidence],
+      ["08", typeof result?.latency_ms === "number" ? `Turn latency · ${result.latency_ms} ms` : "Turn latency", !!result],
     ] as const;
   }, [result]);
 
