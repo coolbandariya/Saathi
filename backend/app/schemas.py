@@ -61,3 +61,10 @@ class VoiceTurnResponse(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     tool_name: str | None = None
     latency_ms: float | None = Field(default=None, ge=0.0)
+
+
+class CallRequest(BaseModel):
+    to: str = Field(min_length=8, max_length=32)
+    callback_url: str = Field(min_length=8, max_length=500)
+    consent: bool = False
+    realtime_voice_ai: bool = False
