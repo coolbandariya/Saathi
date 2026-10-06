@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./home.css";
 import AcidSquares from "../components/AcidSquares";
 import Stepper, { Step } from "../components/Stepper";
+import SiteNav from "../components/SiteNav";
 
 import { motion } from "motion/react";
 import { ArrowRight, ArrowUpRight, AudioLines, Check, CheckCircle2, Database, Languages, Mic2, PhoneCall, ShieldCheck, Sparkles, Wheat, Zap } from "lucide-react";
@@ -23,10 +24,7 @@ const steps = [["01","Listen","Sarvam speech"],["02","Understand","Intent + enti
 
 export default function Home() {
   return <main><div className="acid-background" aria-hidden="true"><AcidSquares color1="#183d32" color2="#d9a64b" color3="#fff8e8" detail="low" speed={0.22} waveDepth={0.45} zoom={1.15} density={9} glow={0.75} exposure={3300} spread={0.32} opacity={0.16} mouseInteraction mouseStrength={0.06} mouseRadius={0.32} grain={false} /></div>
-    <nav className="nav wrap" aria-label="Primary navigation">
-      <Link className="brand" href="/" aria-label="Saathi home"><span className="brand-mark"><AudioLines size={19}/></span>saathi<span className="brand-dot">.</span></Link>
-      <div className="nav-right"><span className="status"><i/>Competition build · 2026</span><a className="nav-link" href="/dashboard">Open live demo <ArrowUpRight size={15}/></a></div>
-    </nav>
+    <SiteNav />
 
     <section className="hero wrap">
       <motion.div className="hero-copy" initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.65}}>
