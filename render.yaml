@@ -29,3 +29,5 @@ services:
         sync: false
       - key: TELEPHONY_WEBHOOK_SECRET
         sync: false
+      - key: CALL_API_TOKEN
+        sync: false
