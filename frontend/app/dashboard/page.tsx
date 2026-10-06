@@ -1,30 +1,37 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
-  CloudRain, FileText, Languages, MapPin, Mic2, PhoneCall, Play,
+  CloudRain, Languages, MapPin, Mic2, PhoneCall, Play,
   ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap, type LucideIcon
 } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const DEMO_LOCATION = { latitude: 28.9931, longitude: 77.0151, label: "Sonipat district · demo context" };
 
 type Source = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
+type Evidence = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
 type Result = {
   reply: string;
   intent: string;
   demo: boolean;
   correlation_id?: string;
   source?: Source;
+  sources?: Evidence[];
   escalated?: boolean;
   escalation_reason?: string | null;
   confidence?: number | null;
+  tool_name?: string | null;
+  latency_ms?: number | null;
 };
 
 const scenarios = [
   { id: "mandi", label: "Mandi bhav", text: "सोनीपत मंडी में गेहूं का आज क्या भाव है?", icon: Wheat },
-  { id: "weather", label: "Weather", text: "कल बारिश होगी?", icon: CloudRain },
+  { id: "weather", label: "Weather", text: "अगले 24 घंटे में बारिश की संभावना कितनी है?", icon: CloudRain },
   { id: "scheme", label: "Yojana", text: "मेरे लिए किसान की सरकारी योजना बताओ", icon: ShieldCheck },
   { id: "human", label: "Human help", text: "मुझे किसी इंसान से बात करनी है", icon: UserRound },
 ] as const;
@@ -33,16 +40,16 @@ const flowSteps: [string, string, string, LucideIcon][] = [
   ["01", "Listen", "Voice / missed call", Mic2],
   ["02", "Understand", "Language + intent", Languages],
   ["03", "Act", "Specialist + tools", Bot],
-  ["04", "Remember", "Consent-based memory", ShieldCheck],
+  ["04", "Protect", "Consent boundary", ShieldCheck],
   ["05", "Escalate", "Human when needed", UserRound],
 ];
 
 const judgeSteps = [
-  ["call", "Missed call arrives", "Voice channel", PhoneCall],
+  ["call", "Call event simulated", "Voice channel", PhoneCall],
   ["lang", "Hindi understood", "Language + intent", Languages],
-  ["agent", "Farming agent selected", "Specialist routing", Bot],
+  ["agent", "Farming route selected", "Specialist routing", Bot],
   ["tool", "Mandi source checked", "Verified tool", Wheat],
-  ["memory", "Context remembered", "Consent-gated memory", ShieldCheck],
+  ["memory", "Consent boundary shown", "No silent memory", ShieldCheck],
   ["fallback", "Human fallback ready", "Escalation", UserRound],
 ] as const;
 
@@ -59,9 +66,9 @@ export default function Dashboard() {
   const [reminderConsent, setReminderConsent] = useState(false);
   const [showJudge, setShowJudge] = useState(true);
   const [judgeIndex, setJudgeIndex] = useState(-1);
-  const [expanded, setExpanded] = useState<string | null>("memory");
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
+  const [followUpStatus, setFollowUpStatus] = useState<"idle" | "pending" | "due">("idle");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -79,15 +86,21 @@ export default function Dashboard() {
     return () => controller.abort();
   }, []);
 
-  const trace = useMemo(() => [
-    ["01", "Call / request received", true],
-    ["02", "Language + intent detected", true],
-    ["03", "Specialist agent selected", !!result],
-    ["04", "Verified tool boundary", !!result],
-    ["05", "Source + timestamp attached", !!result?.source],
-    ["06", "Household memory", memoryConsent && !!result],
-    ["07", "Human fallback", result?.intent === "human"],
-  ] as const, [result, memoryConsent]);
+  const trace = useMemo(() => {
+    const tool = result?.tool_name || "pending";
+    const hasEvidence = !!result?.source || !!result?.sources?.length;
+    const providerState = hasEvidence ? "Evidence + provenance attached" : result ? "No live evidence attached" : "Waiting for request";
+    return [
+      ["01", "Request received", true],
+      ["02", result ? `Intent · ${result.intent}` : "Language + intent", !!result],
+      ["03", result ? `Capability · ${tool}` : "Specialist capability", !!result],
+      ["04", result ? "Policy boundary checked" : "Policy boundary", !!result],
+      ["05", providerState, hasEvidence],
+      ["06", result?.escalated ? "Human escalation selected" : result ? "Grounded response selected" : "Response policy", !!result],
+      ["07", result ? `Sources · ${result.sources?.length || (result.source ? 1 : 0)}` : "Source count", hasEvidence],
+      ["08", typeof result?.latency_ms === "number" ? `Turn latency · ${result.latency_ms} ms` : "Turn latency", !!result],
+    ] as const;
+  }, [result]);
 
   const selectScenario = (id: string) => {
     const item = scenarios.find((entry) => entry.id === id) ?? scenarios[0];
@@ -136,6 +149,9 @@ export default function Dashboard() {
           form.append("audio", blob, "caller.webm");
           form.append("language", "hi");
           form.append("household_id", "demo-household");
+          form.append("latitude", String(DEMO_LOCATION.latitude));
+          form.append("longitude", String(DEMO_LOCATION.longitude));
+          form.append("location_label", DEMO_LOCATION.label);
           const response = await fetch(`${API}/api/v1/voice/turn`, { method: "POST", body: form });
           const body = await response.json();
           if (!response.ok) throw new Error(body.detail || `Voice request failed: ${response.status}`);
@@ -171,7 +187,7 @@ export default function Dashboard() {
       const response = await fetch(`${API}/api/v1/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, language: "hi", household_id: "demo-household" }),
+        body: JSON.stringify({ message, language: "hi", household_id: "demo-household", location: DEMO_LOCATION }),
       });
       if (!response.ok) throw new Error(`Agent request failed: ${response.status}`);
       setResult(await response.json());
@@ -195,6 +211,14 @@ export default function Dashboard() {
     setVoiceState("listening");
   };
 
+  const createFollowUpSimulation = () => {
+    setFollowUpStatus("pending");
+  };
+
+  const simulateThreeDaysLater = () => {
+    if (followUpStatus === "pending") setFollowUpStatus("due");
+  };
+
   const nextJudgeStep = () => {
     if (judgeIndex < judgeSteps.length - 1) {
       setJudgeIndex((value) => value + 1);
@@ -208,23 +232,12 @@ export default function Dashboard() {
 
   return (
     <main className="command-shell">
-      <nav className="command-nav">
-        <a href="/" className="command-brand">
-          <span><Mic2 size={17} /></span>saathi<span className="brand-dot">.</span>
-        </a>
-        <div className="command-nav-meta">
-          <span className="connection"><i /> {apiOnline ? (apiReady ? "API ready" : "API online · providers gated") : "API offline"}</span>
-          <span className="nav-divider" />
-          <span className="operator"><UserRound size={14} /> Operator</span>
-        </div>
-      </nav>
-
       <div className="command-wrap">
         <header className="command-header">
           <div>
             <div className="eyebrow"><span className="eyebrow-line" /> SAATHI COMMAND CENTER</div>
             <h1>From voice to <em>action.</em></h1>
-            <p>Inspect the complete caller journey: language, specialist agents, verified tools, consent-aware memory and human fallback.</p>
+            <p>Inspect the complete demo journey: language, specialist routing, verified tools, evidence, consent boundaries and human fallback.</p>
           </div>
           <div className="header-badges">
             <span><Zap size={13} /> {apiOnline ? (apiReady ? "API ready" : "API online") : "API offline"}</span>
@@ -239,7 +252,7 @@ export default function Dashboard() {
             <div className="judge-copy">
               <div className="panel-kicker">JUDGE MODE · GOLDEN DEMO</div>
               <div className="judge-title-row"><h2 id="judge-mode-title">One call. One visible chain.</h2><button type="button" className="judge-close" onClick={() => setShowJudge(false)} aria-label="Close judge mode"><X size={16} /></button></div>
-              <p>Run the recommended 60-second story: missed call → Hindi → farming agent → verified mandi/weather tools → memory → human fallback.</p>
+              <p>Run the recommended 60-second story: request → Hindi → farming intent → verified tools → evidence → human fallback.</p>
               <button type="button" className="judge-start" onClick={startJudge}>
                 <Play size={15} fill="currentColor" /> Start golden demo
               </button>
@@ -286,7 +299,7 @@ export default function Dashboard() {
           <div className="caller-panel">
             <div className="panel-head">
               <div><span className="panel-kicker">CALLER SIMULATOR</span><h2>What would you ask Saathi?</h2></div>
-              <span className="demo-tag"><i /> DEMO</span>
+              <span className="demo-tag"><i /> DEMO · SAFE MODE</span>
             </div>
 
             <div className="caller-context">
@@ -322,12 +335,13 @@ export default function Dashboard() {
               <motion.div className="answer-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="answer-label"><span><Bot size={15} /> SAATHI RESPONSE</span><b>{result.intent}</b></div>
                 <p>{result.reply}</p>
-                {result.source ? (
-                  <div className="source-row"><CheckCircle2 size={15} /><div><strong>{result.source.name}</strong><span>{result.source.freshness_note || "Provider result retrieved with timestamp."}</span></div></div>
-                ) : (
+                {(result.sources?.length ? result.sources : result.source ? [result.source] : []).map((source, index) => (
+                  <div className="source-row" key={`${source.name}-${source.retrieved_at}-${index}`}><CheckCircle2 size={15} /><div><strong>{source.name}</strong><span>{source.freshness_note || "Provider result retrieved with timestamp."}</span><small>Retrieved · {new Date(source.retrieved_at).toLocaleString()}</small>{source.url && <a href={source.url} target="_blank" rel="noreferrer">View source ↗</a>}</div></div>
+                ))}
+                {!result.sources?.length && !result.source && (
                   <div className="source-row warning"><ShieldCheck size={15} /><div><strong>No live source attached</strong><span>Saathi will not present an unverified answer as live fact.</span></div></div>
                 )}
-                {result.correlation_id && <div className="correlation-line">Correlation ID · <code>{result.correlation_id}</code></div>}
+                {result.correlation_id && <div className="correlation-line">Correlation ID · <code>{result.correlation_id}</code>{result.tool_name && <> · Tool · <strong>{result.tool_name}</strong></>}{typeof result.latency_ms === "number" && <> · Turn · <strong>{result.latency_ms} ms</strong></>}</div>}
               </motion.div>
             )}
           </div>
@@ -352,7 +366,7 @@ export default function Dashboard() {
         <section className="context-grid">
           <article className="context-card">
             <div className="context-title"><div><span className="panel-kicker">FIELD CONTEXT</span><h3>Where should Saathi look?</h3></div><MapPin size={18} /></div>
-            <div className="location-row"><div className="map-placeholder"><MapPin size={23} /><span>FIELD CONTEXT</span></div><div><strong>Sonipat district</strong><p>Location is shown as caller-provided/demo context. No browser GPS is claimed.</p><span className="source-status"><i /> Location source · contextual</span></div></div>
+            <div className="location-row"><div className="map-placeholder"><MapPin size={23} /><span>FIELD CONTEXT</span></div><div><strong>Sonipat district</strong><p>Explicit demo context is passed to the API. No browser GPS is claimed.</p><span className="source-status"><i /> Location source · contextual</span></div></div>
           </article>
 
           <article className="context-card">
@@ -383,6 +397,26 @@ export default function Dashboard() {
           <div className="consent-note"><ShieldCheck size={14} /> In production, consent, opt-out, quiet hours and deletion must be persisted server-side.</div>
         </section>
 
+        <section className="simulation-card" aria-labelledby="simulation-title">
+          <div className="simulation-copy">
+            <span className="panel-kicker">OPERATOR PROOF MODE · SIMULATION</span>
+            <h3 id="simulation-title">Proactive follow-up, without fake persistence.</h3>
+            <p>This local demo proves the workflow shape only. It makes no database write and places no external call.</p>
+          </div>
+          <div className="simulation-flow">
+            <button type="button" onClick={createFollowUpSimulation} disabled={followUpStatus !== "idle"}>Create missing-document follow-up</button>
+            <span>→</span>
+            <button type="button" onClick={simulateThreeDaysLater} disabled={followUpStatus !== "pending"}>Simulate 3 days later</button>
+            <span className={`simulation-state ${followUpStatus}`}>{followUpStatus === "idle" ? "Not scheduled" : followUpStatus === "pending" ? "SIMULATED · pending" : "SIMULATED · due now"}</span>
+          </div>
+          {followUpStatus === "due" && (
+            <div className="simulation-result">
+              <PhoneCall size={15} />
+              <div><strong>Outbound callback workflow is due.</strong><small>No external call was placed. Production persistence + scheduler + Exotel confirmation are required before this becomes LIVE.</small></div>
+            </div>
+          )}
+        </section>
+
         <section className="fallback-card" aria-labelledby="fallback-title">
           <div className="fallback-icon"><UserRound size={22} /></div>
           <div className="fallback-copy"><span className="panel-kicker">HUMAN FALLBACK</span><h3 id="fallback-title">When confidence drops, hand the call to a person.</h3><p>Saathi can package the conversation context for a volunteer instead of forcing the model to answer beyond its safety or confidence boundary.</p></div>
@@ -397,7 +431,7 @@ export default function Dashboard() {
 
         <footer className="command-footer" aria-label="Saathi footer">
           <span>SAATHI · VOICE-FIRST ACCESS</span><span>Prototype control room · 2026</span>
-          <a href="/"><ArrowLeft size={14} /> Back to product</a>
+          <Link href="/"><ArrowLeft size={14} /> Back to product</Link>
         </footer>
       </div>
     </main>

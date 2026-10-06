@@ -140,3 +140,42 @@ def test_gemini_tool_router_reads_function_call_steps(monkeypatch):
     assert call.name == "get_mandi_price"
     assert call.arguments["commodity"] == "Wheat"
     assert call.call_id == "fc-1"
+
+
+def test_sarvam_stt_sends_keyterms(monkeypatch):
+    captured = {}
+    class STTClient(FakeClient):
+        async def request(self, method, *args, **kwargs):
+            captured["data"] = kwargs.get("data")
+            return FakeResponse({"transcript": "गेहूं"})
+    monkeypatch.setattr(provider_adapters.httpx, "AsyncClient", STTClient)
+    asyncio.run(provider_adapters.SarvamSpeechToTextProvider(
+        "key", "https://example.test", keyterms=["Sonipat", "गेहूं"]
+    ).transcribe(b"audio", language="hi"))
+    import json
+    keyterms = json.loads(captured["data"]["keyterms"])
+    assert keyterms == ["Sonipat", "गेहूं"]
+
+
+def test_realtime_tts_accepts_only_supported_telephony_rates():
+    from app.provider_adapters import SarvamRealtimeTTSProvider
+    provider = SarvamRealtimeTTSProvider(api_key="key", sample_rate=8000)
+    assert provider.sample_rate == 8000
+    try:
+        SarvamRealtimeTTSProvider(api_key="key", sample_rate=11025)
+    except ValueError as exc:
+        assert str(exc) == "sarvam_tts_unsupported_sample_rate"
+    else:
+        raise AssertionError("unsupported sample rate was accepted")
+
+
+def test_exotel_voice_ai_requires_secure_stream_url():
+    provider = provider_adapters.ExotelTelephonyProvider(
+        account_sid="sid", api_key="key", api_token="token", caller_id="number"
+    )
+    try:
+        asyncio.run(provider.place_voice_ai_call(to="+911234567890", stream_url="ws://unsafe.example"))
+    except ValueError as exc:
+        assert str(exc) == "Exotel Voice AI StreamUrl must use wss://"
+    else:
+        raise AssertionError("insecure stream URL was accepted")

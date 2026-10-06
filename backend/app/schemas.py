@@ -31,11 +31,14 @@ class ConversationResponse(BaseModel):
     intent: Intent | None = None
     task_created: bool = False
     source: SourceResponse | None = None
+    sources: list[SourceResponse] = Field(default_factory=list)
     demo: bool = False
     correlation_id: str | None = None
     escalated: bool = False
     escalation_reason: EscalationReason | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    tool_name: str | None = None
+    latency_ms: float | None = Field(default=None, ge=0.0)
 
 
 class AgentRequest(ConversationRequest):
@@ -50,8 +53,11 @@ class VoiceTurnResponse(BaseModel):
     audio_base64: str | None = None
     audio_mime_type: str | None = None
     source: SourceResponse | None = None
+    sources: list[SourceResponse] = Field(default_factory=list)
     demo: bool = False
     correlation_id: str | None = None
     escalated: bool = False
     escalation_reason: EscalationReason | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    tool_name: str | None = None
+    latency_ms: float | None = Field(default=None, ge=0.0)

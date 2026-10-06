@@ -1,7 +1,10 @@
 import asyncio
 import base64
 import json
+from urllib.parse import quote
+
 import httpx
+from websockets.asyncio.client import connect as websocket_connect
 
 from .providers import ReasoningProvider, SpeechToTextProvider, TelephonyProvider, TextToSpeechProvider
 
@@ -41,8 +44,9 @@ async def _request_with_retry(client, method: str, url: str, *, attempts: int = 
 
 
 class SarvamSpeechToTextProvider:
-    def __init__(self, api_key: str, endpoint: str, model: str = "saaras:v4", mode: str = "transcribe", timeout_seconds: float = 20.0) -> None:
+    def __init__(self, api_key: str, endpoint: str, model: str = "saaras:v4", mode: str = "transcribe", timeout_seconds: float = 20.0, keyterms: list[str] | None = None) -> None:
         self.api_key, self.endpoint, self.model, self.mode, self.timeout_seconds = api_key, endpoint, model, mode, timeout_seconds
+        self.keyterms = tuple(keyterms or ())[:50]
 
     async def transcribe(self, audio: bytes, *, language: str) -> str:
         language_code = language if language == "unknown" or "-" in language else f"{language}-IN"
@@ -51,7 +55,7 @@ class SarvamSpeechToTextProvider:
                 client, "POST", self.endpoint,
                 headers={"api-subscription-key": self.api_key},
                 files={"file": ("caller.webm", audio, "audio/webm")},
-                data={"model": self.model, "mode": "codemix", "language_code": language_code},
+                data={"model": self.model, "mode": "codemix", "language_code": language_code, "keyterms": json.dumps(list(self.keyterms)) if self.keyterms else None},
             )
             response.raise_for_status()
             payload = response.json()
@@ -150,8 +154,8 @@ class SafeProviderFactory:
         return GeminiInteractionsProvider(api_key, model) if api_key else None
 
     @staticmethod
-    def sarvam_stt(api_key: str | None, endpoint: str, model: str) -> SpeechToTextProvider | None:
-        return SarvamSpeechToTextProvider(api_key, endpoint, model) if api_key else None
+    def sarvam_stt(api_key: str | None, endpoint: str, model: str, keyterms: list[str] | None = None) -> SpeechToTextProvider | None:
+        return SarvamSpeechToTextProvider(api_key, endpoint, model, keyterms=keyterms) if api_key else None
 
     @staticmethod
     def sarvam_tts(api_key: str | None, endpoint: str, model: str, speaker: str) -> TextToSpeechProvider | None:
@@ -242,3 +246,156 @@ class GeminiToolRouter:
                 call_id=str(step.get("id") or ""),
             )
         return None
+
+
+class SarvamRealtimeSTTSession:
+    """Raw WebSocket transport for Sarvam Realtime STT.
+
+    The session keeps audio streaming independent from turn processing so
+    Exotel media can continue arriving while Saathi decides and speaks.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        endpoint: str = "wss://api.sarvam.ai/speech-to-text-realtime/ws",
+        model: str = "saaras:v4",
+        language_code: str = "hi-IN",
+        stream_type: str = "fast",
+        keyterms: list[str] | None = None,
+    ) -> None:
+        self.api_key = api_key
+        self.endpoint = endpoint
+        self.model = model
+        self.language_code = language_code
+        self.stream_type = stream_type
+        self.keyterms = tuple(keyterms or ())[:50]
+        self._ws = None
+
+    def _url(self, sample_rate: int) -> str:
+        if sample_rate not in {8000, 16000}:
+            raise ValueError("sarvam_realtime_unsupported_sample_rate")
+        params = {
+            "model": self.model,
+            "language_code": self.language_code,
+            "stream_type": self.stream_type,
+            "endpointing": "vad",
+            "encoding": "linear16",
+            "sample_rate": str(sample_rate),
+            "mode": "codemix",
+        }
+        if self.keyterms:
+            params["keyterms"] = json.dumps(list(self.keyterms), ensure_ascii=False)
+        query = "&".join(f"{quote(str(k))}={quote(str(v))}" for k, v in params.items())
+        return f"{self.endpoint}?{query}"
+
+    async def connect(self, *, sample_rate: int) -> None:
+        self._ws = await websocket_connect(
+            self._url(sample_rate),
+            additional_headers={"api-subscription-key": self.api_key},
+            ping_interval=20,
+            ping_timeout=10,
+            max_size=2**20,
+        )
+
+    async def send_audio(self, pcm: bytes) -> None:
+        if not self._ws:
+            raise RuntimeError("sarvam_realtime_not_connected")
+        await self._ws.send(json.dumps({
+            "event": "audio_input",
+            "audio": base64.b64encode(pcm).decode("ascii"),
+        }))
+
+    async def receive(self) -> dict:
+        if not self._ws:
+            raise RuntimeError("sarvam_realtime_not_connected")
+        message = await self._ws.recv()
+        if isinstance(message, bytes):
+            raise ValueError("sarvam_realtime_unexpected_binary_event")
+        payload = json.loads(message)
+        if not isinstance(payload, dict):
+            raise ValueError("sarvam_realtime_invalid_event")
+        return payload
+
+    async def end(self) -> None:
+        if self._ws is not None:
+            await self._ws.send(json.dumps({"event": "end"}))
+
+    async def close(self) -> None:
+        if self._ws is not None:
+            await self._ws.close()
+            self._ws = None
+
+
+class SarvamRealtimeTTSProvider:
+    """Per-response streaming TTS transport.
+
+    A fresh socket per response makes barge-in cancellation deterministic:
+    cancelling the response task closes the socket and discards in-flight audio.
+    """
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        endpoint: str = "wss://api.sarvam.ai/text-to-speech/ws",
+        model: str = "bulbul:v3",
+        speaker: str = "shubh",
+        sample_rate: int = 8000,
+    ) -> None:
+        if sample_rate not in {8000, 16000, 22050, 24000}:
+            raise ValueError("sarvam_tts_unsupported_sample_rate")
+        self.api_key = api_key
+        self.endpoint = endpoint
+        self.model = model
+        self.speaker = speaker
+        self.sample_rate = sample_rate
+
+    async def stream(self, text: str, *, language: str, sample_rate: int | None = None):
+        target_rate = sample_rate or self.sample_rate
+        if target_rate not in {8000, 16000, 22050, 24000}:
+            raise ValueError("sarvam_tts_unsupported_sample_rate")
+        uri = (
+            f"{self.endpoint}?model={quote(self.model)}&send_completion_event=true"
+        )
+        ws = await websocket_connect(
+            uri,
+            additional_headers={"api-subscription-key": self.api_key},
+            ping_interval=20,
+            ping_timeout=10,
+            max_size=2**22,
+        )
+        try:
+            await ws.send(json.dumps({
+                "type": "config",
+                "data": {
+                    "language_code": language if "-" in language else f"{language}-IN",
+                    "speaker": self.speaker,
+                    "output_audio_codec": "linear16",
+                    "speech_sample_rate": target_rate,
+                    "min_buffer_size": 40,
+                    "max_chunk_length": 200,
+                },
+            }))
+            await ws.send(json.dumps({"type": "text", "data": {"text": text[:2500]}}))
+            await ws.send(json.dumps({"type": "flush"}))
+
+            while True:
+                raw = await ws.recv()
+                if isinstance(raw, bytes):
+                    continue
+                payload = json.loads(raw)
+                if payload.get("type") == "audio":
+                    data = payload.get("data") or {}
+                    audio = data.get("audio")
+                    if audio:
+                        yield base64.b64decode(audio)
+                elif payload.get("type") == "event":
+                    data = payload.get("data") or {}
+                    if data.get("event_type") == "final":
+                        break
+                elif payload.get("type") == "error":
+                    raise RuntimeError("sarvam_tts_stream_error")
+        finally:
+            await ws.close()

@@ -6,9 +6,9 @@ from .schemas import Intent
 _RULES: tuple[tuple[Intent, tuple[str, ...]], ...] = (
     ("human", ("human", "volunteer", "person", "इंसान", "व्यक्ति", "आदमी", "अधिकारी", "मानव")),
     ("task", ("remind", "reminder", "callback", "याद", "रिमाइंड", "बाद में")),
-    ("scheme", ("scholarship", "scheme", "yojana", "pension", "subsidy", "छात्रवृत्ति", "योजना", "पेंशन")),
+    ("scheme", ("scholarship", "scheme", "yojana", "pension", "subsidy", "eligibility", "लाभ", "छात्रवृत्ति", "योजना", "पेंशन", "पात्र")),
     ("farming", ("mandi", "wheat", "weather", "crop", "farmer", "गेहूं", "मंडी", "मौसम", "बारिश", "फसल", "किसान")),
-    ("document", ("document", "notice", "certificate", "letter", "कागज", "नोटिस", "प्रमाण पत्र", "चिट्ठी")),
+    ("document", ("document", "notice", "certificate", "letter", "दस्तावेज", "दस्तावेज़", "कागज", "नोटिस", "प्रमाण पत्र", "चिट्ठी")),
 )
 
 _HINDI_NEGATION = re.compile(r"(?:नहीं|मत|ना)")
@@ -21,9 +21,11 @@ def _contains_keyword(text: str, keyword: str) -> bool:
 
 
 def _human_request_is_negated(text: str) -> bool:
+    # Only a negation after the human term is treated as refusal.
+    # This preserves phrases such as "agent नहीं, इंसान चाहिए".
     for match in re.finditer(_HUMAN_TERMS, text):
-        window = text[max(0, match.start() - 32):min(len(text), match.end() + 32)]
-        if _HINDI_NEGATION.search(window):
+        after = text[match.end():min(len(text), match.end() + 32)]
+        if _HINDI_NEGATION.search(after):
             return True
     return False
 

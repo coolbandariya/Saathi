@@ -21,9 +21,14 @@ class Settings(BaseSettings):
     sarvam_api_key: str | None = None
     sarvam_stt_endpoint: str = "https://api.sarvam.ai/speech-to-text"
     sarvam_stt_model: str = "saaras:v4"
+    sarvam_realtime_stt_endpoint: str = "wss://api.sarvam.ai/speech-to-text-realtime/ws"
+    sarvam_realtime_stt_enabled: bool = False
+    sarvam_realtime_stream_type: str = "fast"
     sarvam_tts_endpoint: str = "https://api.sarvam.ai/text-to-speech"
     sarvam_tts_model: str = "bulbul:v3"
     sarvam_tts_speaker: str = "shubh"
+    sarvam_tts_stream_endpoint: str = "wss://api.sarvam.ai/text-to-speech/ws"
+    sarvam_tts_stream_sample_rate: int = 8000
     mandi_api_key: str | None = None
     mandi_resource_id: str | None = "9ef84268-d588-465a-a308-a864a43d0070"
     mandi_api_base: str = "https://api.data.gov.in/resource"

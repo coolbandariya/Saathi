@@ -120,7 +120,64 @@ class DataGovMandiTool:
                     ),
                 )
 
-            record = records[0]
+            def norm(value: object) -> str:
+                return " ".join(str(value or "").casefold().split())
+
+            def record_field(record: dict, *keys: str):
+                for key in keys:
+                    if record.get(key) not in (None, ""):
+                        return record[key]
+                return None
+
+            requested_commodity = norm(commodity)
+            requested_state = norm(state)
+            requested_district = norm(district)
+            requested_market = norm(market)
+
+            def score(record: dict) -> int:
+                score = 0
+                if norm(record_field(record, "commodity", "Commodity")) == requested_commodity:
+                    score += 4
+                if norm(record_field(record, "state", "State")) == requested_state:
+                    score += 3
+                if requested_district and norm(record_field(record, "district", "District")) == requested_district:
+                    score += 3
+                if requested_market and norm(record_field(record, "market", "Market")) == requested_market:
+                    score += 5
+                return score
+
+            scored_records = sorted(((score(record), record) for record in records), key=lambda item: item[0], reverse=True)
+            best_score, record = scored_records[0]
+            second_score = scored_records[1][0] if len(scored_records) > 1 else -1
+            # Never silently choose between nearly-equal markets. Ambiguity is safer than a plausible-looking price.
+            if best_score < 7:
+
+                return ToolResult(
+                    ok=False,
+                    error_code="MANDI_ENTITY_MISMATCH",
+                    retryable=False,
+                    data={"commodity": commodity, "state": state, "district": district, "market": market},
+                    source=SourceRecord(
+                        name="Government OGD / AGMARKNET",
+                        url=url,
+                        retrieved_at=datetime.now(timezone.utc),
+                        freshness_note="Government dataset returned records, but none matched the requested commodity/location strongly enough.",
+                    ),
+                )
+
+            if second_score >= 0 and best_score == second_score and requested_market:
+                return ToolResult(
+                    ok=False,
+                    error_code="MANDI_AMBIGUOUS_MARKET",
+                    retryable=False,
+                    data={"commodity": commodity, "state": state, "district": district, "market": market},
+                    source=SourceRecord(
+                        name="Government OGD / AGMARKNET",
+                        url=url,
+                        retrieved_at=datetime.now(timezone.utc),
+                        freshness_note="Multiple returned records matched the requested market equally; no price was selected without a stronger date/record tie-break.",
+                    ),
+                )
 
             def field(*keys: str):
                 for key in keys:

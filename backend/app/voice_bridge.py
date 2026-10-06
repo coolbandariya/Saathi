@@ -2,7 +2,7 @@ import json
 import math
 from typing import Any, Awaitable, Callable
 
-from .exotel_stream import decode_media, encode_media, parse_start
+from .exotel_stream import decode_media, encode_clear, encode_media, parse_start
 
 
 def _is_silent(pcm: bytes, *, threshold: int = 450) -> bool:
@@ -46,9 +46,10 @@ async def run_exotel_session(
     audio_buffer = bytearray()
     silent_bytes = 0
     saw_speech = False
+    playback_active = False
 
     async def process_turn() -> None:
-        nonlocal audio_buffer, silent_bytes, saw_speech
+        nonlocal audio_buffer, silent_bytes, saw_speech, playback_active
         if not audio_buffer:
             return
         pcm = bytes(audio_buffer)
@@ -63,7 +64,11 @@ async def run_exotel_session(
             return
         audio = await synthesize(reply, sample_rate)
         if stream_sid and audio:
+            playback_active = True
             await websocket.send(encode_media(stream_sid, audio))
+            # Exotel can interrupt buffered output when the caller starts speaking again.
+            # The next inbound speech frame clears the remote playback buffer.
+
 
     async for raw in websocket:
         try:
@@ -85,6 +90,7 @@ async def run_exotel_session(
             audio_buffer.clear()
             silent_bytes = 0
             saw_speech = False
+            playback_active = False
             continue
 
         if event_type == "media":
@@ -103,6 +109,9 @@ async def run_exotel_session(
                 silent_bytes += len(frame)
             else:
                 silent_bytes = 0
+                if playback_active and stream_sid:
+                    await websocket.send(encode_clear(stream_sid))
+                    playback_active = False
                 saw_speech = True
 
             duration = len(audio_buffer) / (sample_rate * 2)
@@ -114,8 +123,153 @@ async def run_exotel_session(
             continue
 
         if event_type == "stop":
+            playback_active = False
             await process_turn()
             break
 
         # DTMF/mark events are deliberately ignored by the bounded MVP bridge.
         # They remain part of the protocol surface for a future barge-in/handoff path.
+
+
+async def run_exotel_realtime_session(
+    websocket: Any,
+    *,
+    stt_session: Any,
+    respond: Callable[[str], Awaitable[str]],
+    synthesize_stream: Callable[[str, int], Any],
+) -> None:
+    """Run one Exotel session with streaming STT/TTS and deterministic barge-in."""
+    import asyncio
+
+    stream_sid: str | None = None
+    sample_rate = 8000
+    playback_task: asyncio.Task | None = None
+    response_task: asyncio.Task | None = None
+    reader_task: asyncio.Task | None = None
+
+    async def cancel_playback() -> None:
+        nonlocal playback_task
+        if playback_task and not playback_task.done():
+            playback_task.cancel()
+            await asyncio.gather(playback_task, return_exceptions=True)
+        playback_task = None
+        if stream_sid:
+            await websocket.send(encode_clear(stream_sid))
+
+    async def cancel_response() -> None:
+        nonlocal response_task
+        if response_task and not response_task.done():
+            response_task.cancel()
+            await asyncio.gather(response_task, return_exceptions=True)
+        response_task = None
+
+    async def speak(reply: str) -> None:
+        if not stream_sid:
+            return
+        async for chunk in synthesize_stream(reply, sample_rate):
+            if chunk and stream_sid:
+                await websocket.send(encode_media(stream_sid, chunk))
+
+    async def process_transcript(transcript: str) -> None:
+        if not transcript.strip():
+            return
+        await cancel_playback()
+        reply = await respond(transcript)
+        if reply.strip():
+            await speak(reply)
+
+    async def start_response(transcript: str) -> None:
+        nonlocal response_task
+        await cancel_response()
+        response_task = asyncio.create_task(process_transcript(transcript))
+
+    async def stt_reader() -> None:
+        while True:
+            event = await stt_session.receive()
+            event_name = event.get("event")
+            if event_name == "vad.speech_start":
+                await cancel_response()
+                await cancel_playback()
+            elif event_name == "transcript.final":
+                text = str(event.get("text") or "").strip()
+                if text:
+                    await start_response(text)
+            elif event_name == "error" and event.get("is_fatal"):
+                raise RuntimeError(
+                    f"sarvam_realtime_stt_error:{event.get('code') or 'fatal'}"
+                )
+            elif event_name == "session.end":
+                return
+
+    try:
+        async for raw in websocket:
+            if reader_task and reader_task.done():
+                reader_error = reader_task.exception()
+                if reader_error:
+                    raise reader_error
+
+            try:
+                event = json.loads(raw)
+            except (TypeError, json.JSONDecodeError):
+                continue
+
+            event_type = event.get("event")
+            if event_type == "connected":
+                continue
+
+            if event_type == "start":
+                start = parse_start(event)
+                if not start.stream_sid or not start.call_sid:
+                    raise ValueError("invalid_exotel_start_event")
+                if start.sample_rate not in {8000, 16000}:
+                    raise ValueError("realtime_bridge_requires_8k_or_16k")
+                if stream_sid:
+                    raise ValueError("duplicate_exotel_start_event")
+                stream_sid, sample_rate = start.stream_sid, start.sample_rate
+                await stt_session.connect(sample_rate=sample_rate)
+                reader_task = asyncio.create_task(stt_reader())
+                continue
+
+            if event_type == "media":
+                try:
+                    pcm = decode_media(event)
+                except (ValueError, TypeError):
+                    continue
+                if pcm:
+                    await stt_session.send_audio(pcm)
+                continue
+
+            if event_type == "stop":
+                end = getattr(stt_session, "end", None)
+                if end is not None:
+                    await end()
+                break
+
+        if reader_task:
+            try:
+                await asyncio.wait_for(asyncio.shield(reader_task), timeout=2.0)
+            except asyncio.TimeoutError:
+                pass
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                raise exc
+        if response_task:
+            try:
+                await asyncio.wait_for(asyncio.shield(response_task), timeout=5.0)
+            except asyncio.TimeoutError:
+                await cancel_response()
+            except asyncio.CancelledError:
+                pass
+        if stream_sid:
+            await stt_session.close()
+    finally:
+        if reader_task and not reader_task.done():
+            reader_task.cancel()
+            await asyncio.gather(reader_task, return_exceptions=True)
+        await cancel_response()
+        await cancel_playback()
+        try:
+            await stt_session.close()
+        except Exception:
+            pass

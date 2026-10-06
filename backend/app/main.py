@@ -1,17 +1,19 @@
 from base64 import b64encode
+from time import perf_counter
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .schemas import AgentRequest, ConversationRequest, ConversationResponse, VoiceTurnResponse
+from .schemas import AgentRequest, ConversationRequest, ConversationResponse, LocationContext, VoiceTurnResponse
 from .orchestrator import AgentContext, Orchestrator
 from .rate_limit import InMemoryRateLimiter
 from .telephony import HmacWebhookVerifier
 from .observability import get_correlation_id, set_correlation_id
 from .telephony_voice import SarvamTelephonySpeechProvider
+from .provider_adapters import SarvamRealtimeSTTSession, SarvamRealtimeTTSProvider
 from .voice import VoiceGateway
-from .voice_bridge import run_exotel_session
+from .voice_bridge import run_exotel_realtime_session, run_exotel_session
 from .webhook_events import InMemoryWebhookEventStore, derive_event_id
 
 
@@ -75,6 +77,7 @@ def readiness() -> dict[str, object]:
         "provider_contracts": {
             "core_agent": True,
             "telephony": telephony,
+            "telephony_realtime": bool(telephony and settings.sarvam_realtime_stt_enabled and settings.sarvam_api_key),
             "reasoning": reasoning,
             "mandi": mandi,
             "speech": speech,
@@ -94,12 +97,25 @@ def _source(outcome):
         }
     return None
 
+def _sources(outcome):
+    items = []
+    for result in outcome.results:
+        if result.source:
+            items.append({
+                "name": result.source.name,
+                "url": result.source.url,
+                "retrieved_at": result.source.retrieved_at.isoformat(),
+                "freshness_note": result.source.freshness_note,
+            })
+    return items
+
 
 @app.post("/api/v1/conversation", response_model=ConversationResponse)
 async def conversation(payload: ConversationRequest, request: Request) -> ConversationResponse:
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(key):
         raise HTTPException(status_code=429, detail="rate_limited")
+    started = perf_counter()
     outcome = await orchestrator.handle(
         payload.message,
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
@@ -110,11 +126,14 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
         reply=outcome.reply,
         intent=outcome.intent,
         source=_source(outcome),
+        sources=_sources(outcome),
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
         escalated=outcome.escalated,
         escalation_reason=outcome.escalation_reason,
         confidence=outcome.confidence,
+        tool_name=outcome.tool_name,
+        latency_ms=round((perf_counter() - started) * 1000, 2),
     )
 
 
@@ -123,6 +142,7 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"agent:{key}"):
         raise HTTPException(status_code=429, detail="rate_limited")
+    started = perf_counter()
     outcome = await orchestrator.handle(
         payload.message,
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
@@ -133,11 +153,14 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
         reply=outcome.reply,
         intent=outcome.intent,
         source=_source(outcome),
+        sources=_sources(outcome),
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
         escalated=outcome.escalated,
         escalation_reason=outcome.escalation_reason,
         confidence=outcome.confidence,
+        tool_name=outcome.tool_name,
+        latency_ms=round((perf_counter() - started) * 1000, 2),
     )
 
 
@@ -147,11 +170,14 @@ async def voice_turn(
     audio: UploadFile = File(...),
     language: str = Form("hi"),
     household_id: str | None = Form(None),
+    latitude: float | None = Form(None),
+    longitude: float | None = Form(None),
+    location_label: str | None = Form(None),
 ) -> VoiceTurnResponse:
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"voice:{key}"):
         raise HTTPException(status_code=429, detail="rate_limited")
-    allowed_audio_types = {"audio/webm", "audio/wav", "audio/x-wav", "audio/ogg", "audio/mp4", "audio/mpeg"}
+    allowed_audio_types = {"audio/webm", "audio/wav", "audio/x-wav"}
     if audio.content_type and audio.content_type not in allowed_audio_types:
         raise HTTPException(status_code=415, detail="unsupported_audio_type")
     if len(language) < 2 or len(language) > 20:
@@ -164,8 +190,16 @@ async def voice_turn(
         raise HTTPException(status_code=422, detail="empty_audio")
     if len(raw) > max_audio_bytes:
         raise HTTPException(status_code=413, detail="audio_too_large")
+    location = None
+    if latitude is not None or longitude is not None:
+        if latitude is None or longitude is None:
+            raise HTTPException(status_code=422, detail="location_requires_latitude_and_longitude")
+        if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+            raise HTTPException(status_code=422, detail="invalid_location_coordinates")
+        location = LocationContext(latitude=latitude, longitude=longitude, label=location_label)
+    started = perf_counter()
     try:
-        turn = await voice_gateway.handle(raw, language=language, household_id=household_id)
+        turn = await voice_gateway.handle(raw, language=language, household_id=household_id, location=location)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
@@ -181,11 +215,14 @@ async def voice_turn(
         audio_base64=b64encode(turn.audio).decode("ascii") if turn.audio else None,
         audio_mime_type="audio/wav" if turn.audio else None,
         source=_source(turn.outcome),
+        sources=_sources(turn.outcome),
         demo=settings.demo_mode,
         correlation_id=get_correlation_id(),
         escalated=turn.outcome.escalated,
         escalation_reason=turn.outcome.escalation_reason,
         confidence=turn.outcome.confidence,
+        tool_name=turn.outcome.tool_name,
+        latency_ms=round((perf_counter() - started) * 1000, 2),
     )
 
 
@@ -193,9 +230,9 @@ async def voice_turn(
 async def telephony_stream(websocket: WebSocket) -> None:
     """Exotel AgentStream endpoint.
 
-    The endpoint is intentionally provider-gated. It accepts a real Exotel
-    websocket only when the Sarvam speech provider is configured. The current
-    bridge is bounded-turn, so this is executable but not advertised as realtime.
+    With SARVAM_REALTIME_STT_ENABLED=true this uses Sarvam Realtime STT,
+    streaming TTS, server VAD and cancellation-aware barge-in. Otherwise it
+    retains the bounded-turn adapter as a safe fallback.
     """
     if not settings.exotel_stream_url or not settings.sarvam_api_key:
         await websocket.close(code=1013, reason="telephony_provider_not_configured")
@@ -203,6 +240,38 @@ async def telephony_stream(websocket: WebSocket) -> None:
 
     await websocket.accept()
     try:
+        if settings.sarvam_realtime_stt_enabled:
+            realtime_stt = SarvamRealtimeSTTSession(
+                api_key=settings.sarvam_api_key,
+                endpoint=settings.sarvam_realtime_stt_endpoint,
+                model=settings.sarvam_stt_model,
+                stream_type=settings.sarvam_realtime_stream_type,
+                keyterms=["Sonipat", "सोनीपत", "Haryana", "हरियाणा", "Wheat", "गेहूं", "mandi", "मंडी"],
+            )
+            realtime_tts = SarvamRealtimeTTSProvider(
+                api_key=settings.sarvam_api_key,
+                endpoint=settings.sarvam_tts_stream_endpoint,
+                model=settings.sarvam_tts_model,
+                speaker=settings.sarvam_tts_speaker,
+                sample_rate=settings.sarvam_tts_stream_sample_rate,
+            )
+
+            async def respond(text: str) -> str:
+                outcome = await orchestrator.handle(text, AgentContext(household_id=None, language="hi"))
+                return outcome.reply
+
+            async def synthesize_stream(text: str, sample_rate: int):
+                async for chunk in realtime_tts.stream(text, language="hi-IN", sample_rate=sample_rate):
+                    yield chunk
+
+            await run_exotel_realtime_session(
+                websocket,
+                stt_session=realtime_stt,
+                respond=respond,
+                synthesize_stream=synthesize_stream,
+            )
+            return
+
         speech = SarvamTelephonySpeechProvider(settings)
 
         async def transcribe(pcm: bytes, sample_rate: int) -> str:

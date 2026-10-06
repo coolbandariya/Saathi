@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from .config import Settings
 from .orchestrator import AgentContext, AgentOutcome, Orchestrator
 from .provider_adapters import SafeProviderFactory
+from .schemas import LocationContext
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class VoiceGateway:
             settings.sarvam_api_key if enabled else None,
             settings.sarvam_stt_endpoint,
             settings.sarvam_stt_model,
+            keyterms=["Sonipat", "सोनीपत", "Haryana", "हरियाणा", "Wheat", "गेहूं", "Mandi", "मंडी"],
         )
         self.tts = SafeProviderFactory.sarvam_tts(
             settings.sarvam_api_key if enabled else None,
@@ -28,7 +30,7 @@ class VoiceGateway:
             settings.sarvam_tts_speaker,
         )
 
-    async def handle(self, audio: bytes, *, language: str, household_id: str | None) -> VoiceTurn:
+    async def handle(self, audio: bytes, *, language: str, household_id: str | None, location: LocationContext | None = None) -> VoiceTurn:
         if self.stt is None:
             raise RuntimeError("speech_to_text_provider_not_configured")
         transcript = await self.stt.transcribe(audio, language=language)
@@ -36,7 +38,7 @@ class VoiceGateway:
             raise ValueError("empty_transcript")
         outcome = await self.orchestrator.handle(
             transcript,
-            AgentContext(household_id=household_id, language=language),
+            AgentContext(household_id=household_id, language=language, location=location),
         )
         audio_out = await self.tts.synthesize(outcome.reply, language=language) if self.tts else None
         return VoiceTurn(transcript=transcript, outcome=outcome, audio=audio_out)

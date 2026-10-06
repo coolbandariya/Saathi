@@ -14,7 +14,7 @@ The non-Supabase implementation is now consolidated into a production-shaped pro
 - Open-Meteo weather adapter
 - configurable government OGD/AGMARKNET mandi adapter
 - provider-gated Sarvam browser STT/TTS
-- executable Exotel AgentStream WebSocket endpoint with bounded-turn Sarvam phone speech adapter
+- executable Exotel AgentStream WebSocket endpoint with bounded-turn Sarvam phone speech adapter plus optional Sarvam Realtime STT/streaming TTS transport
 - telephony HMAC/idempotency contracts
 - rate limiting, correlation IDs and capability-aware readiness
 - current Sarvam Document AI adapter for Digitise/Extract jobs

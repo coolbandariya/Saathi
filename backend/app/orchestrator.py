@@ -8,7 +8,7 @@ from .http_tools import DataGovMandiTool, OpenMeteoWeatherTool
 from .intent import classify_intent, extract_farming_entities
 from .provenance import ToolResult
 from .schemas import Intent, LocationContext
-from .tools import DemoMandiTool, DemoWeatherTool
+from .tools import DemoMandiTool, DemoWeatherTool, PMKisanSchemeTool
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,25 @@ class AgentOutcome:
     confidence: float
     escalated: bool
     escalation_reason: EscalationReason | None
+    tool_name: str | None = None
+    results: tuple[ToolResult, ...] = ()
+
+
+class ToolPolicy:
+    """Server-side capability gate: intent may suggest, policy decides what can run."""
+
+    ALLOWED: dict[Intent, frozenset[str]] = {
+        "farming": frozenset({"get_mandi_price", "get_weather"}),
+        "scheme": frozenset({"get_pmkisan_info"}),
+        "human": frozenset({"request_human"}),
+        "document": frozenset(),
+        "task": frozenset(),
+        "general": frozenset(),
+    }
+
+    @classmethod
+    def permits(cls, intent: Intent, tool_name: str) -> bool:
+        return tool_name in cls.ALLOWED.get(intent, frozenset())
 
 
 class Orchestrator:
@@ -46,6 +65,12 @@ class Orchestrator:
                 else None
             )
         self.escalation = EscalationPolicy()
+        self.scheme = PMKisanSchemeTool()
+
+    def _tool_name(self, intent: Intent, tool_name: str) -> str:
+        if not ToolPolicy.permits(intent, tool_name):
+            raise RuntimeError(f"tool_not_permitted:{intent}:{tool_name}")
+        return tool_name
 
     def _outcome(
         self,
@@ -56,11 +81,13 @@ class Orchestrator:
         confidence: float = 0.9,
         explicit_human_request: bool = False,
         safety_boundary: bool = False,
+        tool_name: str | None = None,
+        results: tuple[ToolResult, ...] = (),
     ) -> AgentOutcome:
         decision = self.escalation.evaluate(
             confidence=confidence,
             explicit_human_request=explicit_human_request,
-            provider_failed=bool(result and not result.ok),
+            provider_failed=bool(result and not result.ok) or any(not item.ok for item in results),
             safety_boundary=safety_boundary,
         )
         return AgentOutcome(
@@ -70,6 +97,8 @@ class Orchestrator:
             confidence=decision.confidence,
             escalated=decision.escalate,
             escalation_reason=decision.reason,
+            tool_name=tool_name,
+            results=results or ((result,) if result else ()),
         )
 
     async def handle(self, message: str, context: AgentContext) -> AgentOutcome:
@@ -81,17 +110,84 @@ class Orchestrator:
                 reply="ठीक है। मैं आपकी बात volunteer सहायता के लिए भेजने की तैयारी कर रहा हूँ।",
                 confidence=1.0,
                 explicit_human_request=True,
+                tool_name=self._tool_name(intent, "request_human"),
             )
 
         if intent == "farming":
             lowered = message.casefold()
-            if any(x in lowered for x in ("मौसम", "बारिश", "weather", "rain")):
+            wants_weather = any(x in lowered for x in ("मौसम", "बारिश", "weather", "rain"))
+            wants_mandi = any(x in lowered for x in ("मंडी", "mandi", "भाव", "रेट", "price", "bhav"))
+            if wants_weather and wants_mandi:
+                location = context.location
+                if location is None:
+                    return self._outcome(
+                        intent=intent,
+                        reply="मंडी का भाव तो देखा जा सकता है, लेकिन मौसम के लिए आपका शहर या स्थान चाहिए। कृपया अपना जिला या स्थान बताइए।",
+                        confidence=0.72,
+                        tool_name=self._tool_name(intent, "get_weather"),
+                    )
+                entities = extract_farming_entities(message)
+                missing = []
+                if not entities.commodity:
+                    missing.append("फसल")
+                if not entities.state:
+                    missing.append("राज्य")
+                if not entities.district and not entities.market:
+                    missing.append("जिला या मंडी")
+                if missing:
+                    return self._outcome(
+                        intent=intent,
+                        reply="मंडी और मौसम दोनों सही बताने के लिए " + " और ".join(missing) + " बताइए।",
+                        confidence=0.78,
+                        tool_name=self._tool_name(intent, "get_mandi_price"),
+                    )
+                weather_result = await self.weather.forecast(latitude=location.latitude, longitude=location.longitude)
+                mandi_result = (
+                    await self.mandi.price(
+                        commodity=entities.commodity,
+                        state=entities.state,
+                        district=entities.district,
+                        market=entities.market,
+                    )
+                    if self.mandi is not None
+                    else ToolResult(
+                        ok=False,
+                        error_code="MANDI_PROVIDER_NOT_CONFIGURED",
+                        retryable=False,
+                        data={},
+                    )
+                )
+                parts = []
+                if mandi_result.ok:
+                    d = mandi_result.data
+                    market = d.get("market") or entities.market or entities.district or entities.state
+                    date = d.get("arrival_date") or "latest returned date"
+                    parts.append(f"सरकारी बाजार डेटा के अनुसार {market} में {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है (डेटा दिनांक {date})।")
+                else:
+                    parts.append("सरकारी मंडी स्रोत से इस अनुरोध के लिए विश्वसनीय भाव नहीं मिला, इसलिए मैं भाव का अनुमान नहीं दूँगा।")
+                if weather_result.ok:
+                    d = weather_result.data
+                    probability = d.get("rain_probability_pct", d.get("next_24h_rain_probability_max", 0))
+                    parts.append(f"उपलब्ध मौसम जानकारी के अनुसार तापमान {d['temperature_c']}°C है और अगले 24 घंटे में बारिश की अधिकतम संभावना {probability}% है।")
+                else:
+                    parts.append("मौसम की जानकारी अभी उपलब्ध नहीं है, इसलिए मैं बारिश की संभावना का अनुमान नहीं दूँगा।")
+                return self._outcome(
+                    intent=intent,
+                    reply=" ".join(parts),
+                    result=mandi_result if mandi_result.ok else weather_result,
+                    results=(mandi_result, weather_result),
+                    confidence=0.9 if mandi_result.ok and weather_result.ok else 0.6,
+                    tool_name="get_mandi_price+get_weather",
+                )
+
+            if wants_weather:
                 location = context.location
                 if location is None:
                     return self._outcome(
                         intent=intent,
                         reply="मौसम बताने के लिए आपका शहर या स्थान चाहिए। कृपया अपना जिला या स्थान बताइए।",
                         confidence=0.72,
+                        tool_name="get_weather",
                     )
                 result = await self.weather.forecast(latitude=location.latitude, longitude=location.longitude)
                 if result.ok:
@@ -101,12 +197,14 @@ class Orchestrator:
                         intent=intent,
                         reply=f"उपलब्ध मौसम जानकारी के अनुसार तापमान {d['temperature_c']}°C है और अगले 24 घंटे में बारिश की अधिकतम संभावना {probability}% है।",
                         result=result,
+                        tool_name="get_weather",
                     )
                 return self._outcome(
                     intent=intent,
                     reply="अभी मौसम की जानकारी उपलब्ध नहीं है। मैं गलत जानकारी नहीं देना चाहता।",
                     result=result,
                     confidence=0.55,
+                    tool_name="get_weather",
                 )
 
             if self.mandi is None:
@@ -114,6 +212,7 @@ class Orchestrator:
                     intent=intent,
                     reply="मंडी का लाइव सरकारी स्रोत अभी configured नहीं है। मैं डेमो भाव को live भाव बताकर नहीं दिखाऊँगा।",
                     confidence=0.55,
+                    tool_name="get_mandi_price",
                 )
 
             entities = extract_farming_entities(message)
@@ -130,6 +229,7 @@ class Orchestrator:
                     intent=intent,
                     reply="मंडी का सही सरकारी भाव बताने के लिए " + " और ".join(missing) + " बताइए।",
                     confidence=0.78,
+                    tool_name="get_mandi_price",
                 )
 
             result = await self.mandi.price(
@@ -140,18 +240,30 @@ class Orchestrator:
             )
             if result.ok:
                 d = result.data
-                market = d.get("market") or entities.market or district
+                market = d.get("market") or entities.market or entities.district or entities.state
                 date = d.get("arrival_date") or "latest returned date"
                 return self._outcome(
                     intent=intent,
                     reply=f"सरकारी बाजार डेटा के अनुसार {market} में {d['commodity']} का मॉडल भाव ₹{d['modal_price']} प्रति क्विंटल है (डेटा दिनांक {date})।",
                     result=result,
+                    tool_name="get_mandi_price",
                 )
             return self._outcome(
                 intent=intent,
                 reply="अभी सरकारी मंडी स्रोत से विश्वसनीय भाव नहीं मिला। मैं अनुमान नहीं दूँगा।",
                 result=result,
                 confidence=0.55,
+                tool_name="get_mandi_price",
+            )
+
+        if intent == "scheme" and any(x in message.casefold() for x in ("किसान", "pm-kisan", "pm kisan", "किसान योजना")):
+            result = await self.scheme.explain()
+            return self._outcome(
+                intent=intent,
+                reply="आधिकारिक PM-KISAN जानकारी के अनुसार पात्र landholding farmer families के लिए सालाना ₹6,000 तीन बराबर किस्तों में दिए जाते हैं और registered farmers के लिए eKYC mandatory है। अंतिम eligibility सरकार की scheme guidelines और verification पर निर्भर है।",
+                result=result,
+                confidence=0.96,
+                tool_name=self._tool_name(intent, "get_pmkisan_info"),
             )
 
         replies = {

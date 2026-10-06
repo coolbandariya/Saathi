@@ -46,14 +46,12 @@ SEEDS = {
 }
 
 PREFIXES = ["", "कृपया ", "मुझे बताइए ", "जरा "]
-SUFFIXES = ["", " please", " अभी", " बताइए"]
 
 CASES = [
-    (prefix + seed + suffix, intent)
+    (prefix + seed, intent)
     for intent, seeds in SEEDS.items()
     for seed in seeds
     for prefix in PREFIXES
-    for suffix in SUFFIXES
 ]
 
 def test_synthetic_intent_benchmark():

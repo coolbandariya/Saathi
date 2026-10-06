@@ -20,7 +20,7 @@ def main() -> int:
 
         weather = client.post(
             BASE + "/api/v1/agent",
-            json={"message": "कल बारिश होगी?", "language": "hi", "household_id": "smoke-household"},
+            json={"message": "अगले 24 घंटे में बारिश की संभावना कितनी है?", "language": "hi", "household_id": "smoke-household", "location": {"latitude": 28.9931, "longitude": 77.0151, "label": "Sonipat district · smoke test"}},
         )
         weather.raise_for_status()
         body = weather.json()
@@ -29,7 +29,7 @@ def main() -> int:
 
         mandi = client.post(
             BASE + "/api/v1/agent",
-            json={"message": "सोनीपत मंडी में गेहूं का भाव", "language": "hi", "household_id": "smoke-household"},
+            json={"message": "सोनीपत मंडी में गेहूं का आज का भाव", "language": "hi", "household_id": "smoke-household"},
         )
         mandi.raise_for_status()
         body = mandi.json()
