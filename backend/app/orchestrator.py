@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from .config import get_settings
 from .escalation import EscalationPolicy, EscalationReason
 from .http_tools import DataGovMandiTool, OpenMeteoWeatherTool
+from .provider_adapters import GeminiToolRouter
 from .intent import classify_intent, extract_farming_entities
 from .provenance import ToolResult
 from .schemas import Intent, LocationContext
@@ -66,6 +67,7 @@ class Orchestrator:
             )
         self.escalation = EscalationPolicy()
         self.scheme = PMKisanSchemeTool()
+        self.reasoning_router = GeminiToolRouter(settings.gemini_api_key, settings.llm_model) if settings.gemini_api_key and not settings.demo_mode else None
 
     def _tool_name(self, intent: Intent, tool_name: str) -> str:
         if not ToolPolicy.permits(intent, tool_name):
@@ -103,6 +105,57 @@ class Orchestrator:
 
     async def handle(self, message: str, context: AgentContext) -> AgentOutcome:
         intent = classify_intent(message)
+
+        # Optional reasoning-provider assist. The provider may select only a declared
+        # capability; deterministic adapters still own factual execution and validation.
+        if self.reasoning_router is not None:
+            try:
+                selected = await self.reasoning_router.choose(message)
+                if selected and selected.name == "request_human":
+                    return self._outcome(
+                        intent="human",
+                        reply="ठीक है। मैं आपकी बात volunteer सहायता के लिए भेजने की तैयारी कर रहा हूँ।",
+                        confidence=0.95,
+                        explicit_human_request=True,
+                        tool_name=self._tool_name("human", "request_human"),
+                    )
+                if selected and selected.name == "get_weather" and intent == "farming" and context.location is not None:
+                    args = selected.arguments
+                    latitude = float(args.get("latitude", context.location.latitude))
+                    longitude = float(args.get("longitude", context.location.longitude))
+                    if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
+                        raise ValueError("reasoning_provider_invalid_location")
+                    result = await self.weather.forecast(latitude=latitude, longitude=longitude)
+                    if result.ok:
+                        data = result.data
+                        probability = data.get("rain_probability_pct", data.get("next_24h_rain_probability_max", 0))
+                        return self._outcome(
+                            intent="farming",
+                            reply=f"उपलब्ध मौसम जानकारी के अनुसार तापमान {data['temperature_c']}°C है और अगले 24 घंटे में बारिश की अधिकतम संभावना {probability}% है।",
+                            result=result,
+                            confidence=0.9,
+                            tool_name="get_weather",
+                        )
+                if selected and selected.name == "get_mandi_price" and intent == "farming" and self.mandi is not None:
+                    args = selected.arguments
+                    commodity = str(args.get("commodity") or "").strip()
+                    state = str(args.get("state") or "").strip()
+                    district = str(args.get("district") or "").strip() or None
+                    if commodity and state:
+                        result = await self.mandi.price(commodity=commodity, state=state, district=district)
+                        if result.ok:
+                            data = result.data
+                            market = data.get("market") or district or state
+                            date = data.get("arrival_date") or "latest returned date"
+                            return self._outcome(
+                                intent="farming",
+                                reply=f"सरकारी बाजार डेटा के अनुसार {market} में {data['commodity']} का मॉडल भाव ₹{data['modal_price']} प्रति क्विंटल है (डेटा दिनांक {date})।",
+                                result=result,
+                                confidence=0.9,
+                                tool_name="get_mandi_price",
+                            )
+            except (ValueError, TypeError, RuntimeError):
+                pass
 
         if intent == "human":
             return self._outcome(
