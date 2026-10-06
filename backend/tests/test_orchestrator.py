@@ -83,3 +83,46 @@ def test_combined_mandi_and_weather_returns_both_evidence_paths():
     assert all(result.source is not None for result in outcome.results)
     assert "मॉडल भाव" in outcome.reply
     assert "बारिश" in outcome.reply
+
+
+def test_combined_request_requires_all_mandi_entities():
+    outcome = asyncio.run(Orchestrator().handle(
+        "गेहूं का मंडी भाव और कल बारिश होगी?",
+        AgentContext(
+            household_id="h1",
+            location=LocationContext(latitude=28.9931, longitude=77.0151, label="Sonipat"),
+        ),
+    ))
+    assert outcome.result is None
+    assert "राज्य" in outcome.reply or "जिला" in outcome.reply
+
+
+def test_human_request_is_not_downgraded_by_agent_word():
+    outcome = asyncio.run(Orchestrator().handle("मुझे agent नहीं, इंसान चाहिए", AgentContext(household_id="h1")))
+    assert outcome.intent == "human"
+    assert outcome.escalated is True
+
+
+def test_tool_policy_rejects_cross_intent_capability():
+    from app.orchestrator import ToolPolicy
+    assert ToolPolicy.permits("farming", "get_weather") is True
+    assert ToolPolicy.permits("scheme", "get_weather") is False
+    assert ToolPolicy.permits("general", "get_mandi_price") is False
+
+
+def test_combined_provider_failure_does_not_invent_missing_value(monkeypatch):
+    from app import orchestrator as module
+    async def failed_weather(*, latitude, longitude):
+        from app.provenance import ToolResult
+        return ToolResult(ok=False, error_code="WEATHER_PROVIDER_ERROR")
+    instance = module.Orchestrator()
+    monkeypatch.setattr(instance.weather, "forecast", failed_weather)
+    outcome = asyncio.run(instance.handle(
+        "सोनीपत में गेहूं का मंडी भाव और बारिश का chance?",
+        AgentContext(
+            household_id="h1",
+            location=LocationContext(latitude=28.9931, longitude=77.0151, label="Sonipat"),
+        ),
+    ))
+    assert "मौसम की जानकारी अभी उपलब्ध नहीं है" in outcome.reply
+    assert outcome.escalated is True
