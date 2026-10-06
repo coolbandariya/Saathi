@@ -159,10 +159,10 @@ def test_sarvam_stt_sends_keyterms(monkeypatch):
 
 def test_realtime_tts_accepts_only_supported_telephony_rates():
     from app.provider_adapters import SarvamRealtimeTTSProvider
-    provider = SarvamRealtimeTTSProvider("key", sample_rate=8000)
+    provider = SarvamRealtimeTTSProvider(api_key="key", sample_rate=8000)
     assert provider.sample_rate == 8000
     try:
-        SarvamRealtimeTTSProvider("key", sample_rate=11025)
+        SarvamRealtimeTTSProvider(api_key="key", sample_rate=11025)
     except ValueError as exc:
         assert str(exc) == "sarvam_tts_unsupported_sample_rate"
     else:
