@@ -1,7 +1,7 @@
 # Saathi evaluation
 
 ## Intent benchmark
-The repository contains a small deterministic smoke benchmark in backend/app/evaluation.py.
+The repository contains a deterministic 120-case synthetic intent benchmark in backend/app/evaluation.py, with 20 cases each for farming, schemes, documents, tasks, human escalation and general conversation.
 
 ## Required next dataset
 Build a synthetic 100–200 utterance dataset covering:

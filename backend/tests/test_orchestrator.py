@@ -4,13 +4,11 @@ from app.orchestrator import AgentContext, Orchestrator
 from app.schemas import LocationContext
 
 
-def test_farming_weather_path_is_source_grounded():
+def test_farming_weather_requires_explicit_location():
     outcome = asyncio.run(Orchestrator().handle("कल बारिश होगी?", AgentContext(household_id="h1")))
     assert outcome.intent == "farming"
-    assert outcome.result is not None and outcome.result.ok
-    assert "बारिश" in outcome.reply
-    assert outcome.result.source is not None
-    assert "DEMO DATA" in (outcome.result.source.freshness_note or "")
+    assert outcome.result is None
+    assert "स्थान" in outcome.reply
 
 
 def test_weather_uses_explicit_location_context():
@@ -53,3 +51,10 @@ def test_mandi_without_live_configuration_is_not_presented_as_live(monkeypatch):
     monkeypatch.setattr(module, "get_settings", lambda: FakeSettings())
     instance = module.Orchestrator()
     assert instance.mandi is None
+
+
+def test_mandi_requires_entities_instead_of_using_demo_defaults():
+    outcome = asyncio.run(Orchestrator().handle("मंडी का आज का भाव बताओ", AgentContext(household_id="h1")))
+    assert outcome.intent == "farming"
+    assert outcome.result is None
+    assert "फसल" in outcome.reply
