@@ -21,7 +21,7 @@ def test_golden_demo_harness_is_deterministic_and_truthful(monkeypatch) -> None:
         location=LocationContext(latitude=28.9931, longitude=77.0151, label="Sonipat demo context"),
     )
 
-    mandi = asyncio.run(orchestrator.handle("सोनीपत मंडी में गेहूं का भाव", context))
+    mandi = asyncio.run(orchestrator.handle("हरियाणा सोनीपत मंडी में गेहूं का भाव", context))
     weather = asyncio.run(orchestrator.handle("अगले 24 घंटे में बारिश की संभावना कितनी है?", context))
     scheme = asyncio.run(orchestrator.handle("मुझे किसान की सरकारी योजना बताओ", context))
     human = asyncio.run(orchestrator.handle("मुझे किसी इंसान से बात करनी है", context))
