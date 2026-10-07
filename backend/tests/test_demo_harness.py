@@ -4,7 +4,16 @@ from app.orchestrator import AgentContext, Orchestrator
 from app.schemas import LocationContext
 
 
-def test_golden_demo_harness_is_deterministic_and_truthful() -> None:
+def test_golden_demo_harness_is_deterministic_and_truthful(monkeypatch) -> None:
+    from app import orchestrator as module
+    class FakeSettings:
+        demo_mode = True
+        gemini_api_key = None
+        llm_model = "demo"
+        mandi_api_key = None
+        mandi_resource_id = None
+        mandi_api_base = ""
+    monkeypatch.setattr(module, "get_settings", lambda: FakeSettings())
     orchestrator = Orchestrator()
     context = AgentContext(
         household_id="demo-household",
