@@ -1,6 +1,6 @@
 import asyncio
 
-from app.orchestrator import AgentContext, Orchestrator
+from app.orchestrator import AgentContext, Orchestrator\nfrom app.schemas import LocationContext
 
 
 class FakeCall:
@@ -37,7 +37,7 @@ def test_reasoning_provider_can_select_declared_weather_tool(monkeypatch):
     instance = Orchestrator()
     outcome = asyncio.run(instance.handle(
         "बारिश का हाल बताओ",
-        AgentContext(household_id="h1", language="hi"),
+        AgentContext(household_id="h1", language="hi", location=LocationContext(latitude=28.9931, longitude=77.0151, label="Sonipat")),
     ))
     assert outcome.tool_name == "get_weather"
     assert outcome.result is not None and outcome.result.ok
