@@ -46,8 +46,11 @@ def test_mandi_without_live_configuration_is_not_presented_as_live(monkeypatch):
     from app import orchestrator as module
     class FakeSettings:
         demo_mode = False
+        gemini_api_key = None
+        llm_model = "test"
         mandi_api_key = None
         mandi_resource_id = None
+        mandi_api_base = ""
     monkeypatch.setattr(module, "get_settings", lambda: FakeSettings())
     instance = module.Orchestrator()
     assert instance.mandi is None
