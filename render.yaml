@@ -13,10 +13,12 @@ services:
         value: "false"
       - key: CORS_ORIGINS
         sync: false
+      - key: API_AUTH_TOKEN
+        sync: false
       - key: SARVAM_API_KEY
         sync: false
       - key: SARVAM_REALTIME_STT_ENABLED
-        value: "true"
+        value: "false"
       - key: MANDI_API_KEY
         sync: false
       - key: MANDI_RESOURCE_ID
