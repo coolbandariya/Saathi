@@ -36,6 +36,8 @@ The remaining work before Supabase is intentionally narrow: run the configured p
 
 ## P1 — Persistence and human workflow
 
+**Schema status:** `supabase/migrations/0001_saathi_core.sql` is prepared with household ownership, consent, tasks, conversations, and durable webhook-event storage plus RLS. It has not been applied because the Saathi Supabase project is currently inactive.
+
 **Do not start P1 until the JAI prototype submission is frozen and the provider-backed vertical slice is demonstrated.**
 
 After the non-Supabase release gate passes:
