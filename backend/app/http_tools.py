@@ -146,10 +146,27 @@ class DataGovMandiTool:
                     score += 5
                 return score
 
-            scored_records = sorted(((score(record), record) for record in records), key=lambda item: item[0], reverse=True)
-            best_score, record = scored_records[0]
+            def arrival_date(record: dict) -> datetime:
+                value = record_field(record, "arrival_date", "Arrival_Date", "arrival date")
+                if not value:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+                text = str(value).strip()
+                for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%m/%d/%Y"):
+                    try:
+                        return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
+                    except ValueError:
+                        continue
+                return datetime.min.replace(tzinfo=timezone.utc)
+
+            # Prefer the strongest entity match, then the newest government arrival
+            # date. Never let response ordering decide which market/date is shown.
+            scored_records = sorted(
+                ((score(record), arrival_date(record), record) for record in records),
+                key=lambda item: (item[0], item[1]),
+                reverse=True,
+            )
+            best_score, best_date, record = scored_records[0]
             second_score = scored_records[1][0] if len(scored_records) > 1 else -1
-            # Never silently choose between nearly-equal markets. Ambiguity is safer than a plausible-looking price.
             if best_score < 7:
 
                 return ToolResult(
@@ -165,7 +182,11 @@ class DataGovMandiTool:
                     ),
                 )
 
-            if second_score >= 0 and best_score == second_score and requested_market:
+            tied_best = [
+                item for item in scored_records
+                if item[0] == best_score and item[1] == best_date
+            ]
+            if len(tied_best) > 1:
                 return ToolResult(
                     ok=False,
                     error_code="MANDI_AMBIGUOUS_MARKET",
@@ -175,7 +196,10 @@ class DataGovMandiTool:
                         name="Government OGD / AGMARKNET",
                         url=url,
                         retrieved_at=datetime.now(timezone.utc),
-                        freshness_note="Multiple returned records matched the requested market equally; no price was selected without a stronger date/record tie-break.",
+                        freshness_note=(
+                            "Multiple government records matched equally for the latest available date; "
+                            "no price was selected without a stronger market/record key."
+                        ),
                     ),
                 )
 
