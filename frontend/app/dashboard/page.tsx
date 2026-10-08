@@ -242,8 +242,18 @@ export default function Dashboard() {
         body: JSON.stringify({ message: requestMessage, language: "hi", household_id: "demo-household", location: DEMO_LOCATION }),
       });
       if (!response.ok) throw new Error(`Agent request failed: ${response.status}`);
-      setResult(await response.json());
-      setVoiceState("idle");
+      const body = await response.json();
+      setResult(body);
+      if (!capabilities.speech && typeof window !== "undefined" && "speechSynthesis" in window && body.reply) {
+        setVoiceState("speaking");
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(body.reply);
+        utterance.lang = "hi-IN";
+        utterance.onend = () => setVoiceState("idle");
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setVoiceState("idle");
+      }
     } catch {
       setResult({
         reply: "Backend se connection nahi ho paaya. Saathi live result invent nahi karega — provider status check karein.",
