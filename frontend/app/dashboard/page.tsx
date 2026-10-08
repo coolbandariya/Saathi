@@ -54,10 +54,8 @@ export default function Dashboard() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [memoryConsent, setMemoryConsent] = useState(false);
-  const [reminderConsent, setReminderConsent] = useState(false);
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
-  const [followUpStatus, setFollowUpStatus] = useState<"idle" | "pending" | "due">("idle");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -192,14 +190,6 @@ export default function Dashboard() {
     }
   };
 
-  const createFollowUpSimulation = () => {
-    setFollowUpStatus("pending");
-  };
-
-  const simulateThreeDaysLater = () => {
-    if (followUpStatus === "pending") setFollowUpStatus("due");
-  };
-
   return (
     <main className="command-shell">
       <div className="command-wrap">
@@ -317,40 +307,15 @@ export default function Dashboard() {
 
         <section className="consent-card" aria-labelledby="consent-title">
           <div className="context-title"><div><span className="panel-kicker">HOUSEHOLD MEMORY</span><h3 id="consent-title">Remember only with permission.</h3></div><ShieldCheck size={18} /></div>
-          <p className="consent-intro">Saathi separates useful continuity from silent surveillance. Each future memory/reminder capability has its own consent boundary.</p>
+          <p className="consent-intro">Household memory is intentionally not active in this prototype. This control makes the boundary explicit rather than pretending persistence exists.</p>
           <div className="consent-options">
             <button type="button" className={`consent-option ${memoryConsent ? "on" : ""}`} aria-pressed={memoryConsent} onClick={() => setMemoryConsent((value) => !value)}>
               <span className="toggle">{memoryConsent ? <CheckCircle2 size={14} /> : <X size={14} />}</span>
               <div><strong>Household memory</strong><small>{memoryConsent ? "Consented for this demo household" : "Not enabled"}</small></div>
               <ChevronDown size={14} />
             </button>
-            <button type="button" className={`consent-option ${reminderConsent ? "on" : ""}`} aria-pressed={reminderConsent} onClick={() => setReminderConsent((value) => !value)}>
-              <span className="toggle">{reminderConsent ? <CheckCircle2 size={14} /> : <X size={14} />}</span>
-              <div><strong>Outbound reminders</strong><small>{reminderConsent ? "Consent recorded in demo state" : "Not enabled"}</small></div>
-              <ChevronDown size={14} />
-            </button>
           </div>
           <div className="consent-note"><ShieldCheck size={14} /> In production, consent, opt-out, quiet hours and deletion must be persisted server-side.</div>
-        </section>
-
-        <section className="simulation-card" aria-labelledby="simulation-title">
-          <div className="simulation-copy">
-            <span className="panel-kicker">OPERATOR PROOF MODE · SIMULATION</span>
-            <h3 id="simulation-title">Proactive follow-up, without fake persistence.</h3>
-            <p>This local demo proves the workflow shape only. It makes no database write and places no external call.</p>
-          </div>
-          <div className="simulation-flow">
-            <button type="button" onClick={createFollowUpSimulation} disabled={followUpStatus !== "idle"}>Create missing-document follow-up</button>
-            <span>→</span>
-            <button type="button" onClick={simulateThreeDaysLater} disabled={followUpStatus !== "pending"}>Simulate 3 days later</button>
-            <span className={`simulation-state ${followUpStatus}`}>{followUpStatus === "idle" ? "Not scheduled" : followUpStatus === "pending" ? "SIMULATED · pending" : "SIMULATED · due now"}</span>
-          </div>
-          {followUpStatus === "due" && (
-            <div className="simulation-result">
-              <PhoneCall size={15} />
-              <div><strong>Outbound callback workflow is due.</strong><small>No external call was placed. Production persistence + scheduler + Exotel confirmation are required before this becomes LIVE.</small></div>
-            </div>
-          )}
         </section>
 
         <section className="fallback-card" aria-labelledby="fallback-title">
