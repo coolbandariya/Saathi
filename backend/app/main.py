@@ -93,6 +93,19 @@ def readiness() -> dict[str, object]:
     }
 
 
+def _authorize_api_request(supplied_key: str | None) -> None:
+    """Optional operator/server-to-server guard.
+
+    Browser user authentication belongs at the Supabase session layer; this
+    guard is intentionally only enabled when an API token is explicitly
+    configured for a trusted non-browser client.
+    """
+    if settings.demo_mode or not settings.api_auth_token:
+        return
+    if not supplied_key or not hmac.compare_digest(supplied_key, settings.api_auth_token):
+        raise HTTPException(status_code=401, detail="api_authentication_required")
+
+
 def _source(outcome):
     if outcome.result and outcome.result.source:
         return {
@@ -117,7 +130,12 @@ def _sources(outcome):
 
 
 @app.post("/api/v1/conversation", response_model=ConversationResponse)
-async def conversation(payload: ConversationRequest, request: Request) -> ConversationResponse:
+async def conversation(
+    payload: ConversationRequest,
+    request: Request,
+    x_saathi_api_key: str | None = Header(default=None),
+) -> ConversationResponse:
+    _authorize_api_request(x_saathi_api_key)
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(key):
         raise HTTPException(status_code=429, detail="rate_limited")
@@ -144,7 +162,12 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
 
 
 @app.post("/api/v1/agent", response_model=ConversationResponse)
-async def agent(payload: AgentRequest, request: Request) -> ConversationResponse:
+async def agent(
+    payload: AgentRequest,
+    request: Request,
+    x_saathi_api_key: str | None = Header(default=None),
+) -> ConversationResponse:
+    _authorize_api_request(x_saathi_api_key)
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"agent:{key}"):
         raise HTTPException(status_code=429, detail="rate_limited")
@@ -176,10 +199,12 @@ async def voice_turn(
     audio: UploadFile = File(...),
     language: str = Form("hi"),
     household_id: str | None = Form(None),
+    x_saathi_api_key: str | None = Header(default=None),
     latitude: float | None = Form(None),
     longitude: float | None = Form(None),
     location_label: str | None = Form(None),
-) -> VoiceTurnResponse:
+ ) -> VoiceTurnResponse:
+    _authorize_api_request(x_saathi_api_key)
     key = request.client.host if request.client else "unknown"
     if not limiter.allow(f"voice:{key}"):
         raise HTTPException(status_code=429, detail="rate_limited")
