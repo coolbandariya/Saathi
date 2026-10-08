@@ -82,11 +82,13 @@ def readiness() -> dict[str, object]:
             "core_agent": True,
             "telephony": telephony,
             "telephony_realtime": bool(telephony and settings.sarvam_realtime_stt_enabled and settings.sarvam_api_key),
+            "telephony_stream_auth": bool(settings.telephony_stream_token),
             "reasoning": reasoning,
             "mandi": mandi,
             "speech": speech,
             "weather": True,
             "documents": bool(settings.sarvam_api_key),
+            "api_operator_auth": bool(settings.api_auth_token),
         },
     }
 
