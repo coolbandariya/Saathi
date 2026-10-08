@@ -56,6 +56,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "last_outcome" not in st.session_state:
     st.session_state.last_outcome = None
+if "last_audio" not in st.session_state:
+    st.session_state.last_audio = None
 
 with st.sidebar:
     st.markdown('<div class="brand"><div class="brand-mark">S</div><div><div class="brand-name">Saathi</div><div class="brand-sub">Voice-first assistance</div></div></div>', unsafe_allow_html=True)
@@ -73,6 +75,7 @@ with st.sidebar:
     if st.button("Clear conversation", use_container_width=True):
         st.session_state.messages = []
         st.session_state.last_outcome = None
+        st.session_state.last_audio = None
         st.rerun()
 
 st.markdown(
@@ -149,8 +152,7 @@ with left:
                         st.session_state.last_outcome=ui
                         st.session_state.messages.append(("user",turn.transcript))
                         st.session_state.messages.append(("saathi",turn.outcome.reply))
-                        if turn.audio:
-                            st.session_state.last_audio=turn.audio
+                        st.session_state.last_audio = turn.audio
                         st.rerun()
                     except Exception as exc:
                         st.error(f"Voice provider could not process this turn: {exc}")
@@ -183,6 +185,11 @@ with left:
         st.session_state.messages.append(("user",prompt))
         st.session_state.messages.append(("saathi",outcome.reply))
         st.session_state.last_outcome=ui
+
+    if st.session_state.last_audio:
+        st.markdown("#### Saathi voice reply")
+        st.audio(st.session_state.last_audio, format="audio/wav")
+        st.write("")
 
     if st.session_state.messages:
         for role,message in st.session_state.messages[-10:]:
