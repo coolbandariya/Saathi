@@ -13,7 +13,7 @@ The non-Supabase implementation is now consolidated into a production-shaped pro
 - source provenance and demo/live data labelling
 - Open-Meteo weather adapter
 - configurable government OGD/AGMARKNET mandi adapter
-- provider-gated Sarvam browser STT/TTS
+- provider-gated Sarvam browser STT/TTS with an explicit local-browser voice fallback for credential-free demos
 - executable Exotel AgentStream WebSocket endpoint with bounded-turn Sarvam phone speech adapter plus optional Sarvam Realtime STT/streaming TTS transport
 - telephony HMAC/idempotency contracts
 - rate limiting, correlation IDs and capability-aware readiness
@@ -23,7 +23,7 @@ The non-Supabase implementation is now consolidated into a production-shaped pro
 
 The operator demo intentionally uses labelled simulated data when live credentials are absent. Persistent Supabase memory, durable webhook storage, low-latency realtime phone transport, human case persistence and authorized government application submission remain separate integration/deployment gates.
 
-**Operator demo:** run the frontend and open `/dashboard`.
+**Product demo:** run the frontend and backend, then open `/dashboard`. If Sarvam is not configured, browser-native speech recognition/synthesis is used and visibly treated as local demo voice rather than live provider voice.
 
 ## Product direction
 
