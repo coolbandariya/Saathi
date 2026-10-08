@@ -65,3 +65,4 @@ After deployment:
 - Keep caller phone numbers and sensitive documents out of logs.
 - Keep the in-memory rate limiter and webhook store treated as prototype-only until durable infrastructure is added.
 - The telephony stream token is an admission guard, not a replacement for Exotel event validation or durable call authorization.
+- If `API_AUTH_TOKEN` is configured, direct agent/conversation/voice API clients must send `X-Saathi-API-Key`. Do not put this token in browser JavaScript; public browser authentication belongs behind the future Supabase session layer.
