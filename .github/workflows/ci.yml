@@ -44,6 +44,16 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run build
 
+  streamlit-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pip install -r streamlit_app/requirements.txt
+      - run: python -m py_compile streamlit_app/app.py
+
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
