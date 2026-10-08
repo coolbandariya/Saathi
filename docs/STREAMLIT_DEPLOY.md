@@ -29,6 +29,6 @@ SARVAM_API_KEY = "..."
 MANDI_API_KEY = "..."
 ```
 
-The backend's `Settings` reads environment variables, so Community Cloud secrets should use the same uppercase names.
+The Streamlit entrypoint mirrors supported Community Cloud secrets into the process environment before the backend `Settings` object is created, so use the same uppercase names. The demo never prints secret values.
 
 Do not enable live mode until the corresponding provider path has actually been exercised and verified.
