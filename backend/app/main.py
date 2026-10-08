@@ -25,7 +25,7 @@ app.add_middleware(
     allow_origins=[x.strip() for x in settings.cors_origins.split(",") if x.strip()],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature", "X-Correlation-ID"],
+    allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature", "X-Saathi-API-Key", "X-Correlation-ID"],
     expose_headers=["X-Correlation-ID"],
 )
 limiter = InMemoryRateLimiter()
@@ -40,9 +40,15 @@ async def correlation_middleware(request: Request, call_next):
     correlation_id = set_correlation_id(incoming)
     response = await call_next(request)
     response.headers["X-Correlation-ID"] = correlation_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), geolocation=(), microphone=()"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
     if request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
-    response.headers["X-Content-Type-Options"] = "nosniff"
+    if settings.app_env.lower() == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
