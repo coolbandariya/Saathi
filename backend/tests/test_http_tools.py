@@ -147,3 +147,33 @@ class MandiTieClient:
     async def __aenter__(self): return self
     async def __aexit__(self, *args): pass
     async def get(self, *args, **kwargs): return MandiTieResponse()
+
+
+class WeatherDailyResponse:
+    def raise_for_status(self): pass
+    def json(self):
+        return {
+            "current": {"temperature_2m": 27, "precipitation": 0},
+            "hourly": {"precipitation_probability": [10, 20, 30]},
+            "daily": {
+                "time": ["2026-10-09", "2026-10-10"],
+                "precipitation_probability_max": [30, 75],
+                "precipitation_sum": [1.2, 4.5],
+            },
+        }
+
+
+class WeatherDailyClient:
+    async def __aenter__(self): return self
+    async def __aexit__(self, *args): pass
+    async def get(self, *args, **kwargs): return WeatherDailyResponse()
+
+
+def test_open_meteo_exposes_tomorrow_forecast(monkeypatch):
+    import app.http_tools as module
+    monkeypatch.setattr(module.httpx, "AsyncClient", lambda **kwargs: WeatherDailyClient())
+    result = asyncio.run(OpenMeteoWeatherTool().forecast(latitude=28.99, longitude=77.02))
+    assert result.ok
+    assert result.data["tomorrow_date"] == "2026-10-10"
+    assert result.data["tomorrow_rain_probability_pct"] == 75
+    assert result.data["tomorrow_precipitation_mm"] == 4.5
