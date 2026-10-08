@@ -62,3 +62,30 @@ def test_operator_api_auth_can_be_enabled(monkeypatch):
     assert allowed.status_code == 200
     monkeypatch.setattr(module.settings, "demo_mode", True)
     monkeypatch.setattr(module.settings, "api_auth_token", None)
+
+
+def test_backend_security_headers_are_present(monkeypatch):
+    import app.main as module
+    monkeypatch.setattr(module.settings, "app_env", "production")
+    response = TestClient(module.app).get("/health/live")
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert response.headers["permissions-policy"] == "camera=(), geolocation=(), microphone=()"
+    assert response.headers["cross-origin-resource-policy"] == "same-origin"
+    assert "max-age=31536000" in response.headers["strict-transport-security"]
+    monkeypatch.setattr(module.settings, "app_env", "development")
+
+
+def test_cors_allows_operator_api_key_header():
+    response = TestClient(app).options(
+        "/api/v1/agent",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "x-saathi-api-key",
+        },
+    )
+    assert response.status_code == 200
+    assert "x-saathi-api-key" in response.headers["access-control-allow-headers"].lower()
