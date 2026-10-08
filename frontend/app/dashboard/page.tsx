@@ -192,6 +192,9 @@ export default function Dashboard() {
     }
   };
 
+  const createFollowUpSimulation = () => setFollowUpStatus("pending");
+  const simulateThreeDaysLater = () => setFollowUpStatus("due");
+
   return (
     <main className="command-shell">
       <div className="command-wrap">
