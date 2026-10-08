@@ -15,6 +15,8 @@ const DEMO_LOCATION = { latitude: 28.9931, longitude: 77.0151, label: "Sonipat d
 
 type Source = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
 type Evidence = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
+type ReadyCapabilities = { core_agent?: boolean; telephony?: boolean; telephony_realtime?: boolean; reasoning?: boolean; mandi?: boolean; speech?: boolean; weather?: boolean; documents?: boolean };
+
 type Result = {
   reply: string;
   intent: string;
@@ -57,6 +59,7 @@ export default function Dashboard() {
   const [reminderConsent, setReminderConsent] = useState(false);
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
+  const [capabilities, setCapabilities] = useState<ReadyCapabilities>({});
   const [followUpStatus, setFollowUpStatus] = useState<"idle" | "pending" | "due">("idle");
 
   useEffect(() => {
@@ -67,6 +70,7 @@ export default function Dashboard() {
         const body = await response.json();
         setApiOnline(true);
         setApiReady(body.status === "ready");
+        setCapabilities(body.provider_contracts || {});
       })
       .catch(() => {
         setApiOnline(false);
@@ -303,7 +307,7 @@ export default function Dashboard() {
           <article className="context-card">
             <div className="context-title"><div><span className="panel-kicker">SOURCE HEALTH</span><h3>What can we trust?</h3></div><CheckCircle2 size={18} /></div>
             <div className="health-list">
-              <div><span><Wheat size={14} /> Mandi tool</span><b className="demo-badge">DEMO / API-ready</b></div>
+              <div><span><Wheat size={14} /> Mandi tool</span><b className={capabilities.mandi ? "live-badge" : "demo-badge"}>{capabilities.mandi ? "LIVE OGD" : "DEMO / NOT CONFIGURED"}</b></div>
               <div><span><CloudRain size={14} /> Weather tool</span><b className="live-badge">Open-Meteo adapter</b></div>
               <div><span><ShieldCheck size={14} /> Scheme rules</span><b className="live-badge">Deterministic</b></div>
             </div>
