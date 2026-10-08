@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import html
+import os
 import sys
 import time
 from pathlib import Path
@@ -11,6 +13,19 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 if str(BACKEND) not in sys.path:
     sys.path.insert(0, str(BACKEND))
+
+# Streamlit Cloud exposes secrets through st.secrets rather than the process
+# environment. Mirror supported secrets into env before the cached Settings object
+# is created so the existing backend configuration remains the single source.
+_SECRET_ENV_KEYS = (
+    "GEMINI_API_KEY", "SARVAM_API_KEY", "MANDI_API_KEY", "MANDI_RESOURCE_ID",
+    "EXOTEL_API_KEY", "EXOTEL_API_TOKEN", "EXOTEL_ACCOUNT_SID",
+    "EXOTEL_VIRTUAL_NUMBER", "EXOTEL_STREAM_URL", "CALL_API_TOKEN",
+    "TELEPHONY_WEBHOOK_SECRET", "DEMO_MODE",
+)
+for _key in _SECRET_ENV_KEYS:
+    if _key in st.secrets and str(st.secrets[_key]).strip():
+        os.environ.setdefault(_key, str(st.secrets[_key]))
 
 from app.config import get_settings
 from app.orchestrator import AgentContext, Orchestrator
@@ -65,7 +80,7 @@ with st.sidebar:
     mode = st.radio("Experience", ["Talk to Saathi", "Operator view"], index=0)
     language = st.selectbox("Language", ["Hindi / Hinglish", "English"], index=0)
     st.markdown("### Location")
-    location_label = st.text_input("City / district", value="Sonipat, Haryana")
+    location_label = st.text_input("City / district", value="Sonipat, Haryana").strip() or "Unknown location"
     latitude = st.number_input("Latitude", value=28.9931, format="%.4f")
     longitude = st.number_input("Longitude", value=77.0151, format="%.4f")
     st.divider()
@@ -193,10 +208,11 @@ with left:
 
     if st.session_state.messages:
         for role,message in st.session_state.messages[-10:]:
+            safe_message = html.escape(str(message))
             if role=="user":
-                st.markdown(f'<div class="chat"><div class="chat-user">YOU</div><div>{message}</div></div>',unsafe_allow_html=True)
+                st.markdown(f'<div class="chat"><div class="chat-user">YOU</div><div>{safe_message}</div></div>',unsafe_allow_html=True)
             else:
-                st.markdown(f'<div class="chat"><div class="chat-user">SAATHI</div><div class="chat-saathi">{message}</div></div>',unsafe_allow_html=True)
+                st.markdown(f'<div class="chat"><div class="chat-user">SAATHI</div><div class="chat-saathi">{safe_message}</div></div>',unsafe_allow_html=True)
     else:
         st.markdown('<div class="chat"><div class="chat-user">TRY A REAL REQUEST</div><div class="chat-saathi">“Mere Sonipat mein kal baarish hogi?”<br>“Sonipat mein gehun ka mandi bhav batao.”<br>“PM Kisan ke liye kya chahiye?”</div></div>',unsafe_allow_html=True)
 
