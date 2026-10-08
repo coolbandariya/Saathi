@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [memoryConsent, setMemoryConsent] = useState(false);
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
+  const [providerContracts, setProviderContracts] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -65,6 +66,7 @@ export default function Dashboard() {
         const body = await response.json();
         setApiOnline(true);
         setApiReady(body.status === "ready");
+        setProviderContracts(body.provider_contracts ?? {});
       })
       .catch(() => {
         setApiOnline(false);
@@ -292,14 +294,14 @@ export default function Dashboard() {
         <section className="context-grid">
           <article className="context-card">
             <div className="context-title"><div><span className="panel-kicker">FIELD CONTEXT</span><h3>Where should Saathi look?</h3></div><MapPin size={18} /></div>
-            <div className="location-row"><div className="map-placeholder"><MapPin size={23} /><span>FIELD CONTEXT</span></div><div><strong>Sonipat district</strong><p>Explicit demo context is passed to the API. No browser GPS is claimed.</p><span className="source-status"><i /> Location source · contextual</span></div></div>
+            <div className="location-row"><div className="map-placeholder"><MapPin size={23} /><span>FIELD CONTEXT</span></div><div><strong>Sonipat district</strong><p>Context is passed to the API. Browser GPS is not used by this prototype.</p><span className="source-status"><i /> Location source · contextual</span></div></div>
           </article>
 
           <article className="context-card">
             <div className="context-title"><div><span className="panel-kicker">SOURCE HEALTH</span><h3>What can we trust?</h3></div><CheckCircle2 size={18} /></div>
             <div className="health-list">
-              <div><span><Wheat size={14} /> Mandi tool</span><b className="demo-badge">DEMO / API-ready</b></div>
-              <div><span><CloudRain size={14} /> Weather tool</span><b className="live-badge">Open-Meteo adapter</b></div>
+              <div><span><Wheat size={14} /> Mandi tool</span><b className={providerContracts.mandi ? "live-badge" : "demo-badge"}>{providerContracts.mandi ? "LIVE / configured" : "DEMO / not configured"}</b></div>
+              <div><span><CloudRain size={14} /> Weather tool</span><b className={providerContracts.weather ? "live-badge" : "demo-badge"}>{providerContracts.weather ? "Open-Meteo adapter" : "Unavailable"}</b></div>
               <div><span><ShieldCheck size={14} /> Scheme rules</span><b className="live-badge">Deterministic</b></div>
             </div>
           </article>
@@ -308,7 +310,7 @@ export default function Dashboard() {
         <section className="consent-card" aria-labelledby="consent-title">
           <div className="context-title"><div><span className="panel-kicker">HOUSEHOLD MEMORY</span><h3 id="consent-title">Remember only with permission.</h3></div><ShieldCheck size={18} /></div>
           <p className="consent-intro">Household memory is intentionally not active in this prototype. This control makes the boundary explicit rather than pretending persistence exists.</p>
-          <div className="consent-options">
+          <div className="consent-options single">
             <button type="button" className={`consent-option ${memoryConsent ? "on" : ""}`} aria-pressed={memoryConsent} onClick={() => setMemoryConsent((value) => !value)}>
               <span className="toggle">{memoryConsent ? <CheckCircle2 size={14} /> : <X size={14} />}</span>
               <div><strong>Household memory</strong><small>{memoryConsent ? "Consented for this demo household" : "Not enabled"}</small></div>
