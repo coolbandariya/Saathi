@@ -39,6 +39,9 @@ async def correlation_middleware(request: Request, call_next):
     correlation_id = set_correlation_id(incoming)
     response = await call_next(request)
     response.headers["X-Correlation-ID"] = correlation_id
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 
 
