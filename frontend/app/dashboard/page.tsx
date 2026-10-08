@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
   const [capabilities, setCapabilities] = useState<ReadyCapabilities>({});
+  const [demoMode, setDemoMode] = useState(true);
   const [followUpStatus, setFollowUpStatus] = useState<"idle" | "pending" | "due">("idle");
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function Dashboard() {
         setApiOnline(true);
         setApiReady(body.status === "ready");
         setCapabilities(body.provider_contracts || {});
+        setDemoMode(body.demo_mode !== false);
       })
       .catch(() => {
         setApiOnline(false);
@@ -307,7 +309,7 @@ export default function Dashboard() {
           <article className="context-card">
             <div className="context-title"><div><span className="panel-kicker">SOURCE HEALTH</span><h3>What can we trust?</h3></div><CheckCircle2 size={18} /></div>
             <div className="health-list">
-              <div><span><Wheat size={14} /> Mandi tool</span><b className={capabilities.mandi ? "live-badge" : "demo-badge"}>{capabilities.mandi ? "LIVE OGD" : "DEMO / NOT CONFIGURED"}</b></div>
+              <div><span><Wheat size={14} /> Mandi tool</span><b className={capabilities.mandi ? "live-badge" : "demo-badge"}>{demoMode ? "DEMO MODE" : capabilities.mandi ? "LIVE OGD" : "NOT CONFIGURED"}</b></div>
               <div><span><CloudRain size={14} /> Weather tool</span><b className="live-badge">Open-Meteo adapter</b></div>
               <div><span><ShieldCheck size={14} /> Scheme rules</span><b className="live-badge">Deterministic</b></div>
             </div>
