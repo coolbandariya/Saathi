@@ -37,3 +37,11 @@ def test_voice_response_schema_keeps_telemetry_fields():
     payload=VoiceTurnResponse(status='ok',tool_name='get_weather',latency_ms=12.5)
     assert payload.tool_name == 'get_weather'
     assert payload.latency_ms == 12.5
+
+
+def test_api_responses_disable_caching_and_expose_correlation_id():
+    response = TestClient(app).post('/api/v1/agent', json={'message': 'नमस्ते', 'language': 'hi'})
+    assert response.status_code == 200
+    assert response.headers['cache-control'] == 'no-store'
+    assert response.headers['x-content-type-options'] == 'nosniff'
+    assert response.headers.get('x-correlation-id')
