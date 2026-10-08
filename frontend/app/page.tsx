@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, CloudRain, Database, Mic2, ShieldCheck, Wheat } from "lucide-react";
+import { ArrowRight, CheckCircle2, CloudRain, Database, Mic2, ShieldCheck, Wheat, type LucideIcon } from "lucide-react";
 import SaathiHero from "../components/SaathiHero";
 import "../components/SaathiHero.css";
 
@@ -9,6 +9,13 @@ const capabilities = [
   { icon: Wheat, title: "Mandi prices", text: "Ask for a commodity and market. Saathi checks the available government market data before answering." },
   { icon: CloudRain, title: "Weather", text: "Get a local weather check alongside a farming question, with the source kept visible." },
   { icon: ShieldCheck, title: "Government schemes", text: "Understand schemes and next steps without pretending an eligibility decision has been verified." },
+];
+
+const flowSteps: FlowStep[] = [
+  { number: "01", title: "You ask", text: "Speak or type naturally.", icon: Mic2 },
+  { number: "02", title: "Saathi understands", text: "Language, intent and entities.", icon: CheckCircle2 },
+  { number: "03", title: "Sources are checked", text: "Specialist tools return evidence.", icon: Database },
+  { number: "04", title: "You get the answer", text: "Grounded response with provenance.", icon: ShieldCheck },
 ];
 
 export default function Home() {
@@ -25,12 +32,7 @@ export default function Home() {
           </div>
 
           <div className="product-flow">
-            {[
-              ["01", "You ask", "Speak or type naturally.", Mic2],
-              ["02", "Saathi understands", "Language, intent and entities.", CheckCircle2],
-              ["03", "Sources are checked", "Specialist tools return evidence.", Database],
-              ["04", "You get the answer", "Grounded response with provenance.", ShieldCheck],
-            ].map(([number, title, text, Icon]) => (
+            {flowSteps.map(({ number, title, text, icon: Icon }) => (
               <article className="product-flow-card" key={number}>
                 <span className="flow-number">{number}</span>
                 <Icon size={19} />
