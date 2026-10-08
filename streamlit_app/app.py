@@ -23,9 +23,14 @@ _SECRET_ENV_KEYS = (
     "EXOTEL_VIRTUAL_NUMBER", "EXOTEL_STREAM_URL", "CALL_API_TOKEN",
     "TELEPHONY_WEBHOOK_SECRET", "DEMO_MODE",
 )
+try:
+    _streamlit_secrets = st.secrets
+except FileNotFoundError:
+    _streamlit_secrets = {}
+
 for _key in _SECRET_ENV_KEYS:
-    if _key in st.secrets and str(st.secrets[_key]).strip():
-        os.environ.setdefault(_key, str(st.secrets[_key]))
+    if _key in _streamlit_secrets and str(_streamlit_secrets[_key]).strip():
+        os.environ.setdefault(_key, str(_streamlit_secrets[_key]))
 
 from app.config import get_settings
 from app.orchestrator import AgentContext, Orchestrator
@@ -174,7 +179,7 @@ with left:
                         st.session_state.messages.append(("saathi",turn.outcome.reply))
                         st.session_state.last_audio = turn.audio
                         st.rerun()
-                    except Exception as exc:
+                    except Exception:
                         st.error("Voice provider could not process this turn. Check the provider configuration and try again.")
         else:
             st.caption("Voice processing is ready for Sarvam credentials. Until then, use the text box for the complete deterministic demo.")
