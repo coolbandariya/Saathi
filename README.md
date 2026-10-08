@@ -25,6 +25,8 @@ The operator demo intentionally uses labelled simulated data when live credentia
 
 **Operator demo:** run the frontend and open `/dashboard`.
 
+**Streamlit demo:** for the standalone judge-friendly demo, deploy `streamlit_app/app.py` to Streamlit Community Cloud. See `docs/STREAMLIT_DEPLOY.md` for the exact setup and supported secrets.
+
 ## Product direction
 
 1. Voice-first access through phone or browser.
