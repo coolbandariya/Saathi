@@ -9,6 +9,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: PYTHON_VERSION
+        value: "3.11.11"
       - key: DEMO_MODE
         value: "false"
       - key: CORS_ORIGINS
