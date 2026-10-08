@@ -21,12 +21,14 @@ Required production secrets:
 - `EXOTEL_VIRTUAL_NUMBER`
 - `EXOTEL_STREAM_URL`
 - `TELEPHONY_WEBHOOK_SECRET`
+- `TELEPHONY_STREAM_TOKEN` (recommended: unpredictable token appended to the Exotel Stream URL)
+- `API_AUTH_TOKEN` (optional operator/server-to-server API guard; do not expose it in browser code)
 
 Set `CORS_ORIGINS` to the exact deployed frontend origin.
 
 For the phone path, `EXOTEL_STREAM_URL` must point to the deployed backend WebSocket endpoint:
 
-`wss://<backend-host>/api/v1/telephony/stream`
+`wss://<backend-host>/api/v1/telephony/stream?token=<stream-token>`
 
 Do not enable realtime telephony claims until a real Exotel call completes the full round trip.
 
@@ -62,3 +64,4 @@ After deployment:
 - Restrict CORS to the deployed frontend.
 - Keep caller phone numbers and sensitive documents out of logs.
 - Keep the in-memory rate limiter and webhook store treated as prototype-only until durable infrastructure is added.
+- The telephony stream token is an admission guard, not a replacement for Exotel event validation or durable call authorization.
