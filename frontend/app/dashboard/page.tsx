@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
-  CloudRain, Languages, MapPin, Mic2, PhoneCall, Play,
+  CloudRain, Languages, MapPin, Mic2, PhoneCall,
   ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap, type LucideIcon
 } from "lucide-react";
 
@@ -44,15 +44,6 @@ const flowSteps: [string, string, string, LucideIcon][] = [
   ["05", "Escalate", "Human when needed", UserRound],
 ];
 
-const judgeSteps = [
-  ["call", "Call event simulated", "Voice channel", PhoneCall],
-  ["lang", "Hindi understood", "Language + intent", Languages],
-  ["agent", "Farming route selected", "Specialist routing", Bot],
-  ["tool", "Mandi source checked", "Verified tool", Wheat],
-  ["memory", "Consent boundary shown", "No silent memory", ShieldCheck],
-  ["fallback", "Human fallback ready", "Escalation", UserRound],
-] as const;
-
 export default function Dashboard() {
   const [message, setMessage] = useState<string>(scenarios[0].text);
   const [scenario, setScenario] = useState("mandi");
@@ -64,8 +55,6 @@ export default function Dashboard() {
   const chunksRef = useRef<Blob[]>([]);
   const [memoryConsent, setMemoryConsent] = useState(false);
   const [reminderConsent, setReminderConsent] = useState(false);
-  const [showJudge, setShowJudge] = useState(true);
-  const [judgeIndex, setJudgeIndex] = useState(-1);
   const [apiOnline, setApiOnline] = useState(false);
   const [apiReady, setApiReady] = useState(false);
   const [followUpStatus, setFollowUpStatus] = useState<"idle" | "pending" | "due">("idle");
@@ -107,7 +96,6 @@ export default function Dashboard() {
     setScenario(id);
     setMessage(item.text);
     setResult(null);
-    setJudgeIndex(-1);
     setVoiceState("idle");
   };
 
@@ -204,81 +192,21 @@ export default function Dashboard() {
     }
   };
 
-  const startJudge = () => {
-    setShowJudge(true);
-    setResult(null);
-    setJudgeIndex(0);
-    setVoiceState("listening");
-  };
-
-  const createFollowUpSimulation = () => {
-    setFollowUpStatus("pending");
-  };
-
-  const simulateThreeDaysLater = () => {
-    if (followUpStatus === "pending") setFollowUpStatus("due");
-  };
-
-  const nextJudgeStep = () => {
-    if (judgeIndex < judgeSteps.length - 1) {
-      setJudgeIndex((value) => value + 1);
-      if (judgeIndex + 1 === 2) setVoiceState("thinking");
-      if (judgeIndex + 1 === 3) setVoiceState("speaking");
-    } else {
-      setVoiceState("idle");
-      setJudgeIndex(-1);
-    }
-  };
-
   return (
     <main className="command-shell">
       <div className="command-wrap">
         <header className="command-header">
           <div>
-            <div className="eyebrow"><span className="eyebrow-line" /> SAATHI COMMAND CENTER</div>
-            <h1>From voice to <em>action.</em></h1>
-            <p>Inspect the complete demo journey: language, specialist routing, verified tools, evidence, consent boundaries and human fallback.</p>
+            <div className="eyebrow"><span className="eyebrow-line" /> SAATHI</div>
+            <h1>Ask Saathi. <em>Get grounded help.</em></h1>
+            <p>Use voice or text to ask a real question. Saathi interprets it, checks the right specialist source, and shows the evidence behind the response.</p>
           </div>
           <div className="header-badges">
             <span><Zap size={13} /> {apiOnline ? (apiReady ? "API ready" : "API online") : "API offline"}</span>
             <span><ShieldCheck size={13} /> Consent-led</span>
             <span><Languages size={13} /> Hindi-first</span>
-            {!showJudge && <button type="button" className="judge-toggle" onClick={() => setShowJudge(true)}>Show judge mode</button>}
           </div>
         </header>
-
-        {showJudge && (
-          <section className="judge-panel" aria-labelledby="judge-mode-title">
-            <div className="judge-copy">
-              <div className="panel-kicker">JUDGE MODE · GOLDEN DEMO</div>
-              <div className="judge-title-row"><h2 id="judge-mode-title">One call. One visible chain.</h2><button type="button" className="judge-close" onClick={() => setShowJudge(false)} aria-label="Close judge mode"><X size={16} /></button></div>
-              <p>Run the recommended 60-second story: request → Hindi → farming intent → verified tools → evidence → human fallback.</p>
-              <button type="button" className="judge-start" onClick={startJudge}>
-                <Play size={15} fill="currentColor" /> Start golden demo
-              </button>
-            </div>
-            <div className="judge-timeline">
-              {judgeSteps.map(([id, title, sub, Icon], index) => {
-                const active = judgeIndex === index;
-                const done = judgeIndex > index;
-                return (
-                  <button type="button" className={`judge-step ${active ? "active" : ""} ${done ? "done" : ""}`} key={id} onClick={() => setJudgeIndex(index)} aria-current={active ? "step" : undefined}>
-                    <span>{done ? <CheckCircle2 size={14} /> : <Icon size={14} />}</span>
-                    <strong>{title}</strong>
-                    <small>{sub}</small>
-                  </button>
-                );
-              })}
-            </div>
-            {judgeIndex >= 0 && (
-              <div className="judge-live">
-                <span className="voice-pulse"><Mic2 size={17} /></span>
-                <div><strong>{judgeSteps[judgeIndex][1]}</strong><small>{judgeSteps[judgeIndex][2]}</small></div>
-                <button type="button" onClick={nextJudgeStep}>{judgeIndex === judgeSteps.length - 1 ? "Finish" : "Next"} <ArrowRight size={14} /></button>
-              </div>
-            )}
-          </section>
-        )}
 
         <section className="status-grid">
           <article className="metric-card accent">
@@ -298,8 +226,8 @@ export default function Dashboard() {
         <section className="workspace">
           <div className="caller-panel">
             <div className="panel-head">
-              <div><span className="panel-kicker">CALLER SIMULATOR</span><h2>What would you ask Saathi?</h2></div>
-              <span className="demo-tag"><i /> DEMO · SAFE MODE</span>
+              <div><span className="panel-kicker">ASK SAATHI</span><h2>What would you like to know?</h2></div>
+              <span className="demo-tag"><i /> BROWSER PROTOTYPE</span>
             </div>
 
             <div className="caller-context">
@@ -399,20 +327,20 @@ export default function Dashboard() {
 
         <section className="simulation-card" aria-labelledby="simulation-title">
           <div className="simulation-copy">
-            <span className="panel-kicker">OPERATOR PROOF MODE · SIMULATION</span>
+            <span className="panel-kicker">FOLLOW-UP · PREVIEW</span>
             <h3 id="simulation-title">Proactive follow-up, without fake persistence.</h3>
-            <p>This local demo proves the workflow shape only. It makes no database write and places no external call.</p>
+            <p>This preview shows the future follow-up workflow. It makes no database write and places no external call.</p>
           </div>
           <div className="simulation-flow">
             <button type="button" onClick={createFollowUpSimulation} disabled={followUpStatus !== "idle"}>Create missing-document follow-up</button>
             <span>→</span>
             <button type="button" onClick={simulateThreeDaysLater} disabled={followUpStatus !== "pending"}>Simulate 3 days later</button>
-            <span className={`simulation-state ${followUpStatus}`}>{followUpStatus === "idle" ? "Not scheduled" : followUpStatus === "pending" ? "SIMULATED · pending" : "SIMULATED · due now"}</span>
+            <span className={`simulation-state ${followUpStatus}`}>{followUpStatus === "idle" ? "Not scheduled" : followUpStatus === "pending" ? "PREVIEW · pending" : "PREVIEW · due now"}</span>
           </div>
           {followUpStatus === "due" && (
             <div className="simulation-result">
               <PhoneCall size={15} />
-              <div><strong>Outbound callback workflow is due.</strong><small>No external call was placed. Production persistence + scheduler + Exotel confirmation are required before this becomes LIVE.</small></div>
+              <div><strong>Outbound callback workflow is due.</strong><small>No external call was placed. Persistence and outbound calling are not enabled in this prototype.</small></div>
             </div>
           )}
         </section>
@@ -430,7 +358,7 @@ export default function Dashboard() {
         </section>
 
         <footer className="command-footer" aria-label="Saathi footer">
-          <span>SAATHI · VOICE-FIRST ACCESS</span><span>Prototype control room · 2026</span>
+          <span>SAATHI · VOICE-FIRST ACCESS</span><span>Product prototype · 2026</span>
           <Link href="/"><ArrowLeft size={14} /> Back to product</Link>
         </footer>
       </div>
