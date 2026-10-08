@@ -18,6 +18,8 @@ class OpenMeteoWeatherTool:
             "longitude": longitude,
             "current": "temperature_2m,precipitation",
             "hourly": "precipitation_probability,temperature_2m",
+            "daily": "precipitation_probability_max,precipitation_sum",
+            "forecast_days": 2,
             "forecast_hours": 24,
             "timezone": "auto",
         }
@@ -33,6 +35,13 @@ class OpenMeteoWeatherTool:
             temperature = current.get("temperature_2m")
             precipitation = current.get("precipitation")
             rain_probability = max(probabilities or [0])
+            daily = payload.get("daily", {})
+            daily_dates = daily.get("time") or []
+            daily_probabilities = daily.get("precipitation_probability_max") or []
+            daily_precipitation = daily.get("precipitation_sum") or []
+            tomorrow_probability = daily_probabilities[1] if len(daily_probabilities) > 1 else None
+            tomorrow_precipitation = daily_precipitation[1] if len(daily_precipitation) > 1 else None
+            tomorrow_date = daily_dates[1] if len(daily_dates) > 1 else None
 
             if temperature is None or not probabilities:
                 raise ValueError("weather_payload_missing_required_fields")
@@ -46,6 +55,9 @@ class OpenMeteoWeatherTool:
                     "precipitation_mm": precipitation,
                     "rain_probability_pct": rain_probability,
                     "next_24h_rain_probability_max": rain_probability,
+                    "tomorrow_date": tomorrow_date,
+                    "tomorrow_rain_probability_pct": tomorrow_probability,
+                    "tomorrow_precipitation_mm": tomorrow_precipitation,
                 },
                 source=SourceRecord(
                     name="Open-Meteo",
