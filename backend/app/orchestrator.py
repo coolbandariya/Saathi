@@ -172,7 +172,7 @@ class Orchestrator:
 
             def contains_term(term: str) -> bool:
                 return re.search(
-                    rf"(?<![\\w\\u0900-\\u097F]){re.escape(term)}(?![\\w\\u0900-\\u097F])",
+                    rf"(?<![\w\u0900-\u097F]){re.escape(term)}(?![\w\u0900-\u097F])",
                     lowered,
                     flags=re.UNICODE,
                 ) is not None
