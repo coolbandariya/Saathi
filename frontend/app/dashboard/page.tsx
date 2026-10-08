@@ -145,7 +145,10 @@ export default function Dashboard() {
       recognition.continuous = false;
       recognition.onresult = (event) => {
         const transcript = event.results[0]?.[0]?.transcript?.trim();
-        if (transcript) setMessage(transcript);
+        if (transcript) {
+          setMessage(transcript);
+          void runAgent(transcript);
+        }
       };
       recognition.onerror = (event) => {
         recognitionRef.current = null;
@@ -229,14 +232,14 @@ export default function Dashboard() {
     }
   };
 
-  const run = async () => {
+  const runAgent = async (requestMessage = message) => {
     setLoading(true);
     setVoiceState("thinking");
     try {
       const response = await fetch(`${API}/api/v1/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, language: "hi", household_id: "demo-household", location: DEMO_LOCATION }),
+        body: JSON.stringify({ message: requestMessage, language: "hi", household_id: "demo-household", location: DEMO_LOCATION }),
       });
       if (!response.ok) throw new Error(`Agent request failed: ${response.status}`);
       setResult(await response.json());
@@ -252,6 +255,8 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  const run = () => runAgent();
 
   const createFollowUpSimulation = () => setFollowUpStatus("pending");
   const simulateThreeDaysLater = () => setFollowUpStatus("due");
