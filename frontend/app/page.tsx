@@ -5,7 +5,10 @@ import { ArrowRight, CheckCircle2, CloudRain, Database, Mic2, ShieldCheck, Wheat
 import SaathiHero from "../components/SaathiHero";
 import "../components/SaathiHero.css";
 
-const capabilities = [
+type Capability = { icon: LucideIcon; title: string; text: string };
+type FlowStep = { number: string; title: string; text: string; icon: LucideIcon };
+
+const capabilities: Capability[] = [
   { icon: Wheat, title: "Mandi prices", text: "Ask for a commodity and market. Saathi checks the available government market data before answering." },
   { icon: CloudRain, title: "Weather", text: "Get a local weather check alongside a farming question, with the source kept visible." },
   { icon: ShieldCheck, title: "Government schemes", text: "Understand schemes and next steps without pretending an eligibility decision has been verified." },
