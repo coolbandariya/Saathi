@@ -166,7 +166,6 @@ class DataGovMandiTool:
                 reverse=True,
             )
             best_score, best_date, record = scored_records[0]
-            second_score = scored_records[1][0] if len(scored_records) > 1 else -1
             if best_score < 7:
 
                 return ToolResult(
