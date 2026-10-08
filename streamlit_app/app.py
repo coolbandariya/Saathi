@@ -124,7 +124,12 @@ if mode == "Operator view":
             sources = getattr(out,"sources",[])
             if sources:
                 for src in sources:
-                    st.markdown(f'<div class="source"><b>{src["name"]}</b><br><span class="muted">Retrieved: {src["retrieved_at"]}</span><br><span class="muted">{src.get("freshness_note","")}</span></div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="source"><b>{html.escape(str(src["name"]))}</b><br>'
+                        f'<span class="muted">Retrieved: {html.escape(str(src["retrieved_at"]))}</span><br>'
+                        f'<span class="muted">{html.escape(str(src.get("freshness_note", "")))}</span></div>',
+                        unsafe_allow_html=True,
+                    )
             else:
                 st.info("No external source was required for this response.")
     else:
@@ -170,7 +175,7 @@ with left:
                         st.session_state.last_audio = turn.audio
                         st.rerun()
                     except Exception as exc:
-                        st.error(f"Voice provider could not process this turn: {exc}")
+                        st.error("Voice provider could not process this turn. Check the provider configuration and try again.")
         else:
             st.caption("Voice processing is ready for Sarvam credentials. Until then, use the text box for the complete deterministic demo.")
 
@@ -220,18 +225,22 @@ with right:
     st.markdown('<div class="panel"><div class="panel-title">What Saathi understood</div><div class="panel-sub">The reasoning trace stays visible instead of hiding behind a chatbot.</div></div>', unsafe_allow_html=True)
     out=st.session_state.last_outcome
     if out:
-        st.markdown(f'<div class="metric"><div class="metric-label">Intent</div><div class="metric-value">{out.intent}</div></div>',unsafe_allow_html=True)
+        st.markdown(f'<div class="metric"><div class="metric-label">Intent</div><div class="metric-value">{html.escape(str(out.intent))}</div></div>',unsafe_allow_html=True)
         st.write("")
         c1,c2=st.columns(2)
         with c1:
-            st.markdown(f'<div class="metric"><div class="metric-label">Capability</div><div class="metric-value">{out.tool_name or "conversation"}</div></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="metric"><div class="metric-label">Capability</div><div class="metric-value">{html.escape(str(out.tool_name or "conversation"))}</div></div>',unsafe_allow_html=True)
         with c2:
             st.markdown(f'<div class="metric"><div class="metric-label">Confidence</div><div class="metric-value">{out.confidence:.0%}</div></div>',unsafe_allow_html=True)
         st.write("")
         st.markdown(f'<div class="metric"><div class="metric-label">Turn latency</div><div class="metric-value">{out.latency_ms:.0f} ms</div></div>',unsafe_allow_html=True)
         if out.source:
             src=out.source
-            st.markdown(f'<div class="source"><b>Source-backed answer</b><br>{src["name"]}<br><span class="muted">Retrieved {src["retrieved_at"]}</span></div>',unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="source"><b>Source-backed answer</b><br>{html.escape(str(src["name"]))}'
+                f'<br><span class="muted">Retrieved {html.escape(str(src["retrieved_at"]))}</span></div>',
+                unsafe_allow_html=True,
+            )
         if out.escalated:
             st.warning("Saathi recommends human support for this request.")
     else:
