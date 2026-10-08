@@ -171,7 +171,11 @@ class Orchestrator:
             lowered = message.casefold()
 
             def contains_term(term: str) -> bool:
-                return re.search(rf"(?<![\\w]){re.escape(term)}(?![\\w])", lowered, flags=re.UNICODE) is not None
+                return re.search(
+                    rf"(?<![\\w\\u0900-\\u097F]){re.escape(term)}(?![\\w\\u0900-\\u097F])",
+                    lowered,
+                    flags=re.UNICODE,
+                ) is not None
 
             # Use term boundaries here. Plain substring matching makes words such
             # as "संभावना" accidentally match the mandi signal "भाव".
