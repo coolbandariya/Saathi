@@ -1,4 +1,5 @@
 from base64 import b64encode
+import hmac
 from time import perf_counter
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
@@ -240,6 +241,11 @@ async def telephony_stream(websocket: WebSocket) -> None:
     if not settings.exotel_stream_url or not settings.sarvam_api_key:
         await websocket.close(code=1013, reason="telephony_provider_not_configured")
         return
+    if settings.telephony_stream_token:
+        supplied_token = websocket.query_params.get("token", "")
+        if not hmac.compare_digest(supplied_token, settings.telephony_stream_token):
+            await websocket.close(code=1008, reason="telephony_stream_not_authorized")
+            return
 
     await websocket.accept()
     try:
