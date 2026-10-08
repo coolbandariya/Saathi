@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
+  ArrowLeft, ArrowUpRight, Bot, CheckCircle2, ChevronDown,
   CloudRain, Languages, MapPin, Mic2, PhoneCall,
   ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap, type LucideIcon
 } from "lucide-react";
@@ -219,7 +219,7 @@ export default function Dashboard() {
           </article>
           <article className="metric-card">
             <div className="metric-icon"><Sparkles size={18} /></div>
-            <div><small>VOICE STATE</small><strong>{voiceState === "idle" ? "Ready" : voiceState === "listening" ? "Listening" : voiceState === "thinking" ? "Thinking" : "Speaking"}</strong><p>Live adapter state · demo-safe</p></div>
+            <div><small>VOICE STATE</small><strong>{voiceState === "idle" ? "Ready" : voiceState === "listening" ? "Listening" : voiceState === "thinking" ? "Thinking" : "Speaking"}</strong><p>Live browser voice state</p></div>
           </article>
         </section>
 
@@ -236,7 +236,7 @@ export default function Dashboard() {
               <span className={`call-state ${voiceState !== "idle" ? "busy" : ""}`}>{voiceState.toUpperCase()}</span>
             </div>
 
-            <div className="scenario-tabs" role="tablist" aria-label="Demo scenarios">
+            <div className="scenario-tabs" role="tablist" aria-label="Question types">
               {scenarios.map(({ id, label, icon: Icon }) => (
                 <button type="button" key={id} role="tab" aria-selected={scenario === id} className={scenario === id ? "selected" : ""} onClick={() => selectScenario(id)}>
                   <Icon size={14} />{label}
