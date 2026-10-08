@@ -45,3 +45,20 @@ def test_api_responses_disable_caching_and_expose_correlation_id():
     assert response.headers['cache-control'] == 'no-store'
     assert response.headers['x-content-type-options'] == 'nosniff'
     assert response.headers.get('x-correlation-id')
+
+
+def test_operator_api_auth_can_be_enabled(monkeypatch):
+    import app.main as module
+    monkeypatch.setattr(module.settings, "demo_mode", False)
+    monkeypatch.setattr(module.settings, "api_auth_token", "operator-secret")
+    client = TestClient(module.app)
+    denied = client.post("/api/v1/agent", json={"message": "नमस्ते", "language": "hi"})
+    assert denied.status_code == 401
+    allowed = client.post(
+        "/api/v1/agent",
+        headers={"X-Saathi-API-Key": "operator-secret"},
+        json={"message": "नमस्ते", "language": "hi"},
+    )
+    assert allowed.status_code == 200
+    monkeypatch.setattr(module.settings, "demo_mode", True)
+    monkeypatch.setattr(module.settings, "api_auth_token", None)
