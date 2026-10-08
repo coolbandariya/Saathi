@@ -50,6 +50,8 @@ Frontend: `cd frontend && npm install && npm run dev`
 
 Backend: `cd backend && python -m venv .venv && pip install -r requirements.txt && pytest -q && uvicorn app.main:app --reload`
 
+Full local stack: `docker compose up --build` (see `docs/LOCAL_DEMO.md`).
+
 Never commit `.env` files or secrets. Start from the provided `.env.example` files.
 
 ## Engineering rules
