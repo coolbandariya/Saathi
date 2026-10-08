@@ -17,6 +17,24 @@ type Source = { name: string; url: string; retrieved_at: string; freshness_note?
 type Evidence = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
 type ReadyCapabilities = { core_agent?: boolean; telephony?: boolean; telephony_realtime?: boolean; reasoning?: boolean; mandi?: boolean; speech?: boolean; weather?: boolean; documents?: boolean };
 
+type BrowserSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+type BrowserSpeechWindow = Window & {
+  SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+};
+
 type Result = {
   reply: string;
   intent: string;
@@ -54,6 +72,7 @@ export default function Dashboard() {
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "thinking" | "speaking">("idle");
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [memoryConsent, setMemoryConsent] = useState(false);
   const [reminderConsent, setReminderConsent] = useState(false);
@@ -107,6 +126,42 @@ export default function Dashboard() {
 
   const toggleVoice = async () => {
     setVoiceError(null);
+
+    // Demo-mode fallback: use the browser's native speech stack when Sarvam
+    // is not configured. This is explicitly local/browser voice, not provider STT/TTS.
+    if (!capabilities.speech) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        return;
+      }
+      const SpeechRecognition = (window as BrowserSpeechWindow).SpeechRecognition || (window as BrowserSpeechWindow).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setVoiceError("Live speech is not configured, and this browser does not provide local speech recognition.");
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = "hi-IN";
+      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.onresult = (event) => {
+        const transcript = event.results[0]?.[0]?.transcript?.trim();
+        if (transcript) setMessage(transcript);
+      };
+      recognition.onerror = (event) => {
+        recognitionRef.current = null;
+        setVoiceState("idle");
+        setVoiceError(event.error ? `Browser speech error: ${event.error}` : "Browser speech recognition failed.");
+      };
+      recognition.onend = () => {
+        recognitionRef.current = null;
+        setVoiceState("idle");
+      };
+      recognitionRef.current = recognition;
+      setVoiceState("listening");
+      recognition.start();
+      return;
+    }
+
     if (recorderRef.current) {
       recorderRef.current.stop();
       setVoiceState("thinking");
@@ -259,7 +314,7 @@ export default function Dashboard() {
               <button type="button" className={`voice-button ${voiceState === "listening" ? "active" : ""}`} onClick={toggleVoice} aria-label="Toggle microphone" disabled={loading || voiceState === "speaking"}>
                 <Mic2 size={18} /> {voiceState === "listening" ? "Stop recording" : "Start voice"}
               </button>
-              <span><Volume2 size={13} /> Real mic → STT → agent → TTS when the voice provider is configured</span>
+              <span><Volume2 size={13} /> {capabilities.speech ? "Real mic → provider STT → agent → provider TTS" : "Browser voice preview · provider STT/TTS not configured"}</span>
             </div>
 
             {voiceError && <div className="voice-error" role="alert" aria-live="assertive">{voiceError}</div>}
