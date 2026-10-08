@@ -110,9 +110,9 @@ if mode == "Operator view":
     vals = [
         ("Core agent", "Ready"),
         ("Weather", "Live" if not settings.demo_mode else "Demo"),
-        ("Mandi", "Configured" if settings.mandi_api_key else "Demo / gated"),
-        ("Speech", "Configured" if settings.sarvam_api_key else "Not configured"),
-        ("Telephony", "Configured" if settings.exotel_stream_url else "Not configured"),
+        ("Mandi", "Live" if (not settings.demo_mode and settings.mandi_api_key and settings.mandi_resource_id) else "Demo / gated"),
+        ("Speech", "Live" if (not settings.demo_mode and settings.sarvam_api_key) else ("Configured / demo" if settings.sarvam_api_key else "Not configured")),
+        ("Telephony", "Live" if (not settings.demo_mode and settings.exotel_stream_url) else ("Configured / demo" if settings.exotel_stream_url else "Not configured")),
     ]
     for c,(label,value) in zip(cols,vals):
         with c:
