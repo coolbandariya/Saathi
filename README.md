@@ -29,6 +29,8 @@ The operator demo intentionally uses labelled simulated data when live credentia
 
 **Render API:** the root `Dockerfile` deploys the current FastAPI backend as a Docker web service. Follow `docs/RENDER_DEPLOY.md`; leave Render's Root Directory blank and set Dockerfile Path to `./Dockerfile`.
 
+**Vercel + Supabase connection:** deploy the Next.js app with `frontend/` as the Vercel Root Directory, set `BACKEND_API_URL` to the public FastAPI origin, and configure the Supabase server-side secret on the API service. Follow `docs/VERCEL_SUPABASE_CONNECT.md`.
+
 ## Product direction
 
 1. Voice-first access through phone or browser.
