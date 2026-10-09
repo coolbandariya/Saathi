@@ -72,3 +72,11 @@ jobs:
       # Runtime dependencies are audited strictly; the dev-tool advisory remains visible in npm install output.
       - working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build production API image
+        run: docker build --file Dockerfile --tag saathi-api:ci .
+      - name: Verify container entrypoint and image metadata
+        run: docker image inspect saathi-api:ci --format '{{.Config.Entrypoint}} {{.Config.Cmd}}'
