@@ -39,7 +39,7 @@ services:
         sync: false
       - key: TELEPHONY_WEBHOOK_SECRET
         sync: false
-      - key: API_AUTH_TOKEN
+      - key: CALL_API_TOKEN
         sync: false
       - key: TELEPHONY_STREAM_TOKEN
         sync: false
