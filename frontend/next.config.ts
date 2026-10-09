@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const backendApiUrl = process.env.BACKEND_API_URL?.replace(/\/$/, "");
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -14,6 +16,15 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+    ];
+  },
+  async rewrites() {
+    if (!backendApiUrl) return [];
+    return [
+      {
+        source: "/backend/:path*",
+        destination: `${backendApiUrl}/:path*`,
       },
     ];
   },
