@@ -182,6 +182,15 @@ async def agent(payload: AgentRequest, request: Request) -> ConversationResponse
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
     )
     failed = bool(outcome.result and not outcome.result.ok)
+    await record_conversation_metadata(
+        household_id=payload.household_id,
+        agent_used=outcome.intent,
+        tools_called=[outcome.tool_name] if outcome.tool_name else [],
+        confidence_score=outcome.confidence,
+        language_code=payload.language,
+        correlation_id=get_correlation_id(),
+        response_class="error" if failed else ("escalated" if outcome.escalated else "answered"),
+    )
     return ConversationResponse(
         status="error" if failed else "ok",
         reply=outcome.reply,
