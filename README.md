@@ -27,6 +27,8 @@ The operator demo intentionally uses labelled simulated data when live credentia
 
 **Streamlit demo:** for the standalone judge-friendly demo, deploy `streamlit_app/app.py` to Streamlit Community Cloud. See `docs/STREAMLIT_DEPLOY.md` for the exact setup and supported secrets.
 
+**Render API:** the root `Dockerfile` deploys the current FastAPI backend as a Docker web service. Follow `docs/RENDER_DEPLOY.md`; leave Render's Root Directory blank and set Dockerfile Path to `./Dockerfile`.
+
 ## Product direction
 
 1. Voice-first access through phone or browser.
