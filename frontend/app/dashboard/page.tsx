@@ -10,7 +10,7 @@ import {
   ShieldCheck, Sparkles, UserRound, Volume2, Wheat, X, Zap, type LucideIcon
 } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === "production" ? "/backend" : "http://localhost:8000");
 const DEMO_LOCATION = { latitude: 28.9931, longitude: 77.0151, label: "Sonipat district · demo context" };
 
 type Source = { name: string; url: string; retrieved_at: string; freshness_note?: string | null };
