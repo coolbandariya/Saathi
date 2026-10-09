@@ -65,13 +65,13 @@ Then:
 
 ```bash
 cd frontend
-npm ci
+npm install
 npm run lint
 npx tsc --noEmit
 npm run build
 ```
 
-Use a clean environment and the committed lockfile. If a command fails, fix the failure before calling the release ready. The hosted provider tests still need to be run against the actual deployed URLs.
+The repository currently does not include `frontend/package-lock.json`, so the current workflow uses `npm install` rather than `npm ci`. For reproducible production builds, generate and commit a reviewed lockfile, then switch CI and this runbook to `npm ci`. If a command fails, fix the failure before calling the release ready. The hosted provider tests still need to be run against the actual deployed URLs.
 
 ## 5. Do not announce production readiness until these gates pass
 
