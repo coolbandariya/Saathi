@@ -72,7 +72,23 @@ export default function Home() {
       </section>
       <section className="how-section wrap" aria-labelledby="how-title">
         <div className="section-heading"><div className="eyebrow"><span className="eyebrow-line" /> HOW IT WORKS</div><h2 id="how-title">From speech to<br /><em>verified response.</em></h2><p>One visible path keeps the prototype understandable: listen, understand, verify, then respond.</p></div>
-        <Stepper initialStep={1} onStepChange={() => undefined} backButtonText="Back" nextButtonText="Next">
+        <Stepper
+          initialStep={1}
+          onStepChange={() => undefined}
+          backButtonText="Back"
+          nextButtonText="Next"
+          renderStepIndicator={({ step, currentStep, onStepClick }) => (
+            <button
+              type="button"
+              className={`step-indicator ${currentStep === step ? "active" : currentStep > step ? "complete" : "inactive"}`}
+              aria-current={currentStep === step ? "step" : undefined}
+              aria-label={`Go to step ${step}`}
+              onClick={() => onStepClick(step)}
+            >
+              {step}
+            </button>
+          )}
+        >
           <Step><h3>Listen</h3><p>Browser microphone input is converted to speech text through the configured speech provider.</p></Step>
           <Step><h3>Understand</h3><p>Saathi identifies the user’s intent and extracts the entities a specialist workflow needs.</p></Step>
           <Step><h3>Verify</h3><p>Only declared tools can supply factual values such as mandi observations or weather forecasts.</p></Step>
