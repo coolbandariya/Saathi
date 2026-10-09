@@ -16,6 +16,7 @@ from .provider_adapters import ExotelTelephonyProvider, SarvamRealtimeSTTSession
 from .voice import VoiceGateway
 from .voice_bridge import run_exotel_realtime_session, run_exotel_session
 from .webhook_events import InMemoryWebhookEventStore, derive_event_id
+from .supabase_store import record_conversation_metadata
 
 
 settings = get_settings()
@@ -145,6 +146,15 @@ async def conversation(payload: ConversationRequest, request: Request) -> Conver
         AgentContext(household_id=payload.household_id, language=payload.language, location=payload.location),
     )
     failed = bool(outcome.result and not outcome.result.ok)
+    await record_conversation_metadata(
+        household_id=payload.household_id,
+        agent_used=outcome.intent,
+        tools_called=[outcome.tool_name] if outcome.tool_name else [],
+        confidence_score=outcome.confidence,
+        language_code=payload.language,
+        correlation_id=get_correlation_id(),
+        response_class="error" if failed else ("escalated" if outcome.escalated else "answered"),
+    )
     return ConversationResponse(
         status="error" if failed else "ok",
         reply=outcome.reply,
