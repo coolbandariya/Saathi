@@ -16,13 +16,14 @@ def test_store_detects_duplicates():
     assert store.seen_or_record("evt-123") is True
 
 
+import asyncio
+
 import pytest
 
 from app.webhook_events import record_supabase_webhook_event
 
 
-@pytest.mark.anyio
-async def test_durable_webhook_claim_returns_false_for_new_event(monkeypatch):
+def test_durable_webhook_claim_returns_false_for_new_event(monkeypatch):
     class Response:
         status_code = 201
         is_success = True
@@ -44,17 +45,16 @@ async def test_durable_webhook_claim_returns_false_for_new_event(monkeypatch):
             return Response()
 
     monkeypatch.setattr("app.webhook_events.httpx.AsyncClient", Client)
-    duplicate = await record_supabase_webhook_event(
+    duplicate = asyncio.run(record_supabase_webhook_event(
         base_url="https://project.supabase.co",
         secret_key="test-secret",
         event_id="evt-new",
         event_type="call.completed",
-    )
+    ))
     assert duplicate is False
 
 
-@pytest.mark.anyio
-async def test_durable_webhook_claim_treats_unique_conflict_as_duplicate(monkeypatch):
+def test_durable_webhook_claim_treats_unique_conflict_as_duplicate(monkeypatch):
     class Response:
         status_code = 409
         is_success = False
@@ -73,17 +73,16 @@ async def test_durable_webhook_claim_treats_unique_conflict_as_duplicate(monkeyp
             return Response()
 
     monkeypatch.setattr("app.webhook_events.httpx.AsyncClient", Client)
-    duplicate = await record_supabase_webhook_event(
+    duplicate = asyncio.run(record_supabase_webhook_event(
         base_url="https://project.supabase.co",
         secret_key="test-secret",
         event_id="evt-old",
         event_type=None,
-    )
+    ))
     assert duplicate is True
 
 
-@pytest.mark.anyio
-async def test_durable_webhook_claim_fails_closed_on_server_error(monkeypatch):
+def test_durable_webhook_claim_fails_closed_on_server_error(monkeypatch):
     class Response:
         status_code = 500
         is_success = False
@@ -103,9 +102,9 @@ async def test_durable_webhook_claim_fails_closed_on_server_error(monkeypatch):
 
     monkeypatch.setattr("app.webhook_events.httpx.AsyncClient", Client)
     with pytest.raises(RuntimeError, match="durable_webhook_store_http_500"):
-        await record_supabase_webhook_event(
+        asyncio.run(record_supabase_webhook_event(
             base_url="https://project.supabase.co",
             secret_key="test-secret",
             event_id="evt-error",
             event_type=None,
-        )
+        ))
