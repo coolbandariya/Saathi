@@ -26,7 +26,7 @@ app.add_middleware(
     allow_origins=[x.strip() for x in settings.cors_origins.split(",") if x.strip()],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature", "X-Correlation-ID"],
+    allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature", "X-Provider-Event-ID", "X-Correlation-ID"],
     expose_headers=["X-Correlation-ID"],
 )
 limiter = InMemoryRateLimiter()
@@ -279,7 +279,7 @@ async def place_outbound_call(
         raise HTTPException(status_code=400, detail="explicit_outbound_call_consent_required")
     if not payload.to.replace("+", "").isdigit():
         raise HTTPException(status_code=422, detail="invalid_phone_number")
-    if settings.demo_mode:
+    if settings.demo_mode and settings.app_env.lower() != "production":
         emit_event("call.demo", channel="exotel", realtime=payload.realtime_voice_ai)
         return {"status": "demo", "call_id": "demo-call-accepted", "provider": "exotel", "realtime": payload.realtime_voice_ai}
     token = authorization.removeprefix("Bearer ").strip() if authorization else ""
