@@ -1,8 +1,9 @@
 """Small, deterministic language regression set for Saathi.
 
 This is a text-level smoke benchmark, not a speech WER claim. The phrases are
-synthetic and contain no real user data. Expand with reviewed examples before
-making regional-language or production-accuracy claims.
+synthetic and contain no real user data. Expected labels represent intended
+meaning, so misses remain visible in the report instead of being relabelled as
+successes.
 """
 from __future__ import annotations
 
@@ -21,7 +22,6 @@ class LanguageCase:
 
 
 CASES: tuple[LanguageCase, ...] = (
-    # Hindi
     LanguageCase("सोनीपत मंडी में गेहूं का भाव बताओ", "hi", "farming", "Wheat", "Sonipat"),
     LanguageCase("कल बारिश होगी क्या", "hi", "farming"),
     LanguageCase("मुझे किसी इंसान से बात करनी है", "hi", "human"),
@@ -32,9 +32,8 @@ CASES: tuple[LanguageCase, ...] = (
     LanguageCase("नमस्ते साथी", "hi", "general"),
     LanguageCase("किसी अधिकारी से बात करवाओ", "hi", "human"),
     LanguageCase("छात्रवृत्ति के लिए कौन पात्र है", "hi", "scheme"),
-    # Hinglish
     LanguageCase("Sonipat mandi me wheat ka bhav batao", "hinglish", "farming", "Wheat", "Sonipat"),
-    LanguageCase("kal rain hogi kya", "hinglish", "general"),
+    LanguageCase("kal rain hogi kya", "hinglish", "farming"),
     LanguageCase("mujhe human se baat karni hai", "hinglish", "human"),
     LanguageCase("PM Kisan scheme kaise milegi", "hinglish", "scheme"),
     LanguageCase("ye notice explain kar do", "hinglish", "document"),
@@ -43,11 +42,9 @@ CASES: tuple[LanguageCase, ...] = (
     LanguageCase("hello Saathi", "hinglish", "general"),
     LanguageCase("agent nahi, insaan chahiye", "hinglish", "human"),
     LanguageCase("pension eligibility batao", "hinglish", "scheme"),
-    # Colloquial / Haryanvi-accented Hindi-like text. These do not prove
-    # Haryanvi speech recognition; actual dialect audio evaluation is separate.
     LanguageCase("गेहूं का भाव बता दे भाई", "colloquial-hi", "farming", "Wheat"),
-    LanguageCase("कल पानी बरसेगा के", "colloquial-hi", "general"),
-    LanguageCase("मन्ने आदमी तै बात करनी सै", "colloquial-hi", "general"),
+    LanguageCase("कल पानी बरसेगा के", "colloquial-hi", "farming"),
+    LanguageCase("मन्ने आदमी तै बात करनी सै", "colloquial-hi", "human"),
     LanguageCase("किसान वाली योजना बता दे", "colloquial-hi", "scheme"),
     LanguageCase("इस कागज में के लिख्या सै", "colloquial-hi", "document"),
     LanguageCase("मन्ने फेर याद करा दियो", "colloquial-hi", "task"),
@@ -55,7 +52,6 @@ CASES: tuple[LanguageCase, ...] = (
     LanguageCase("राम राम साथी", "colloquial-hi", "general"),
     LanguageCase("मन्ने volunteer से बात करवा दे", "colloquial-hi", "human"),
     LanguageCase("सरकारी लाभ कैसे मिलेगा", "colloquial-hi", "scheme"),
-    # Adversarial / ambiguity-oriented checks
     LanguageCase("मुझे agent नहीं, इंसान चाहिए", "adversarial", "human"),
     LanguageCase("इंसान से बात नहीं करनी", "adversarial", "general"),
     LanguageCase("मंडी का भाव बताओ", "adversarial", "farming"),
