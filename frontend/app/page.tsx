@@ -77,7 +77,7 @@ export default function Home() {
           onStepChange={() => undefined}
           backButtonText="Back"
           nextButtonText="Next"
-          renderStepIndicator={({ step, currentStep, onStepClick }) => (
+          renderStepIndicator={({ step, currentStep, onStepClick }: { step: number; currentStep: number; onStepClick: (step: number) => void }) => (
             <button
               type="button"
               className={`step-indicator ${currentStep === step ? "active" : currentStep > step ? "complete" : "inactive"}`}
