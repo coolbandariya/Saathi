@@ -37,3 +37,12 @@ def test_voice_response_schema_keeps_telemetry_fields():
     payload=VoiceTurnResponse(status='ok',tool_name='get_weather',latency_ms=12.5)
     assert payload.tool_name == 'get_weather'
     assert payload.latency_ms == 12.5
+
+
+
+def test_api_responses_include_baseline_security_headers():
+    response = TestClient(app).get('/health/live')
+    assert response.headers['x-content-type-options'] == 'nosniff'
+    assert response.headers['x-frame-options'] == 'DENY'
+    assert response.headers['referrer-policy'] == 'no-referrer'
+    assert response.headers['permissions-policy'] == 'camera=(), microphone=(), geolocation=()'
