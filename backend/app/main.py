@@ -100,14 +100,16 @@ def readiness() -> dict[str, object]:
 
 
 def _authorize_api_request(supplied_key: str | None) -> None:
-    """Optional operator/server-to-server guard.
+    """Fail closed outside the explicitly labelled demo environment.
 
-    Browser user authentication belongs at the Supabase session layer; this
-    guard is intentionally only enabled when an API token is explicitly
-    configured for a trusted non-browser client.
+    This token is for trusted server-to-server/operator clients only; it must
+    never be embedded in browser JavaScript. A production browser client needs
+    its own verified user-session integration before production traffic opens.
     """
-    if settings.demo_mode or not settings.api_auth_token:
+    if settings.demo_mode:
         return
+    if not settings.api_auth_token:
+        raise HTTPException(status_code=503, detail="api_authentication_not_configured")
     if not supplied_key or not hmac.compare_digest(supplied_key, settings.api_auth_token):
         raise HTTPException(status_code=401, detail="api_authentication_required")
 
