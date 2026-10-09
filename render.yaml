@@ -39,5 +39,9 @@ services:
         sync: false
       - key: TELEPHONY_WEBHOOK_SECRET
         sync: false
-      - key: CALL_API_TOKEN
+      - key: API_AUTH_TOKEN
         sync: false
+      - key: TELEPHONY_STREAM_TOKEN
+        sync: false
+      - key: SARVAM_REALTIME_STT_ENABLED
+        value: "false"
