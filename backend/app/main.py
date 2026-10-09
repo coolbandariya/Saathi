@@ -51,6 +51,13 @@ async def correlation_middleware(request: Request, call_next):
     record_request(request.url.path, response.status_code, latency_ms)
     emit_event("request.completed", method=request.method, route=request.url.path, status_code=response.status_code, latency_ms=round(latency_ms, 2))
     response.headers["X-Correlation-ID"] = correlation_id
+    # API responses should not be MIME-sniffed or embedded by other sites.
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "").lower() == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 

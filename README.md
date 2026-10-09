@@ -16,7 +16,7 @@ The non-Supabase implementation is now consolidated into a production-shaped pro
 - provider-gated Sarvam browser STT/TTS
 - executable Exotel AgentStream WebSocket endpoint with bounded-turn Sarvam phone speech adapter plus optional Sarvam Realtime STT/streaming TTS transport
 - telephony HMAC/idempotency contracts
-- rate limiting, correlation IDs and capability-aware readiness
+- rate limiting, correlation IDs, baseline API security headers and capability-aware readiness
 - current Sarvam Document AI adapter for Digitise/Extract jobs
 - consent and human-escalation UI
 - automated backend/frontend CI and dependency audits
@@ -70,7 +70,7 @@ Never commit `.env` files or secrets. Start from the provided `.env.example` fil
 
 ## Release roadmap
 
-See `docs/BUILD_PLAN.md` for the current gates. The immediate next milestone is a measured, provider-backed voice vertical slice; Supabase persistence comes after the non-Supabase runtime is accepted.
+See `docs/BUILD_PLAN.md` for the current gates and `docs/DEPLOYMENT_RUNBOOK.md` for staged Vercel/Render deployment, smoke tests, provider configuration, and rollback. The repository is deployable as a demo, but it is not yet honest to call every capability production-ready: live provider tests, real phone-call proof, authenticated household persistence, durable webhooks, and shared rate limiting remain release gates.
 
 ## Hackathon
 
