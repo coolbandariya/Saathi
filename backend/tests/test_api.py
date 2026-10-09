@@ -57,7 +57,7 @@ def test_outbound_call_demo_mode_does_not_bypass_auth_in_production(monkeypatch)
     monkeypatch.setattr(main.settings, "call_api_token", None)
     response = TestClient(app).post(
         "/api/v1/calls",
-        json={"to": "+911234567890", "consent": True},
+        json={"to": "+911234567890", "callback_url": "https://example.test/callback", "consent": True},
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "call_api_unauthorized"
