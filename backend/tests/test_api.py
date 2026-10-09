@@ -89,3 +89,31 @@ def test_cors_allows_operator_api_key_header():
     )
     assert response.status_code == 200
     assert "x-saathi-api-key" in response.headers["access-control-allow-headers"].lower()
+
+
+def test_non_demo_api_fails_closed_when_auth_is_not_configured(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main.settings, "demo_mode", False)
+    monkeypatch.setattr(main.settings, "api_auth_token", None)
+    response = TestClient(app).post("/api/v1/agent", json={"message": "नमस्ते"})
+    assert response.status_code == 503
+    assert response.json()["detail"] == "api_authentication_not_configured"
+
+
+def test_non_demo_api_requires_a_matching_server_token(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main.settings, "demo_mode", False)
+    monkeypatch.setattr(main.settings, "api_auth_token", "test-only-secret")
+
+    client = TestClient(app)
+    denied = client.post("/api/v1/agent", json={"message": "नमस्ते"})
+    assert denied.status_code == 401
+
+    allowed = client.post(
+        "/api/v1/agent",
+        json={"message": "नमस्ते"},
+        headers={"X-Saathi-API-Key": "test-only-secret"},
+    )
+    assert allowed.status_code == 200
