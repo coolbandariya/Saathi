@@ -15,7 +15,7 @@ from .telephony_voice import SarvamTelephonySpeechProvider
 from .provider_adapters import ExotelTelephonyProvider, SarvamRealtimeSTTSession, SarvamRealtimeTTSProvider
 from .voice import VoiceGateway
 from .voice_bridge import run_exotel_realtime_session, run_exotel_session
-from .webhook_events import InMemoryWebhookEventStore, derive_event_id
+from .webhook_events import InMemoryWebhookEventStore, derive_event_id, record_supabase_webhook_event
 from .supabase_store import record_conversation_metadata
 
 
@@ -26,7 +26,7 @@ app.add_middleware(
     allow_origins=[x.strip() for x in settings.cors_origins.split(",") if x.strip()],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature", "X-Correlation-ID"],
+    allow_headers=["Content-Type", "Authorization", "X-Saathi-Signature", "X-Provider-Event-ID", "X-Correlation-ID"],
     expose_headers=["X-Correlation-ID"],
 )
 limiter = InMemoryRateLimiter()
@@ -279,7 +279,7 @@ async def place_outbound_call(
         raise HTTPException(status_code=400, detail="explicit_outbound_call_consent_required")
     if not payload.to.replace("+", "").isdigit():
         raise HTTPException(status_code=422, detail="invalid_phone_number")
-    if settings.demo_mode:
+    if settings.demo_mode and settings.app_env.lower() != "production":
         emit_event("call.demo", channel="exotel", realtime=payload.realtime_voice_ai)
         return {"status": "demo", "call_id": "demo-call-accepted", "provider": "exotel", "realtime": payload.realtime_voice_ai}
     token = authorization.removeprefix("Bearer ").strip() if authorization else ""
@@ -392,5 +392,31 @@ async def telephony_webhook(
     if not x_saathi_signature or not HmacWebhookVerifier(settings.telephony_webhook_secret).verify(body, x_saathi_signature):
         raise HTTPException(status_code=401, detail="invalid_signature")
     event_id = derive_event_id(body, x_provider_event_id)
-    duplicate = webhook_events.seen_or_record(event_id)
+    event_type = None
+    try:
+        parsed_body = await request.json()
+        if isinstance(parsed_body, dict) and isinstance(parsed_body.get("event"), str):
+            event_type = parsed_body["event"]
+        elif isinstance(parsed_body, dict) and isinstance(parsed_body.get("event_type"), str):
+            event_type = parsed_body["event_type"]
+    except (ValueError, UnicodeDecodeError):
+        # The signed raw body remains authoritative; event-type metadata is optional.
+        event_type = None
+
+    if settings.supabase_url and settings.supabase_secret_key:
+        try:
+            duplicate = await record_supabase_webhook_event(
+                base_url=settings.supabase_url,
+                secret_key=settings.supabase_secret_key,
+                event_id=event_id,
+                event_type=event_type,
+            )
+        except (RuntimeError, ValueError):
+            raise HTTPException(status_code=503, detail="durable_webhook_store_unavailable")
+        except Exception:
+            raise HTTPException(status_code=503, detail="durable_webhook_store_unavailable")
+    elif settings.app_env.lower() == "production":
+        raise HTTPException(status_code=503, detail="durable_webhook_store_not_configured")
+    else:
+        duplicate = webhook_events.seen_or_record(event_id)
     return {"status": "duplicate" if duplicate else "accepted", "event_id": event_id}

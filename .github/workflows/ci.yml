@@ -76,7 +76,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Build production API image
-        run: docker build --file Dockerfile --tag saathi-api:ci .
+      - name: Build production API image (retry transient registry failures)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if docker build --pull --file Dockerfile --tag saathi-api:ci .; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Docker build failed on attempt $attempt; waiting before retry."
+              sleep $((attempt * 15))
+            fi
+          done
+          echo "Docker image build failed after 3 attempts."
+          exit 1
       - name: Verify container entrypoint and image metadata
         run: docker image inspect saathi-api:ci --format '{{.Config.Entrypoint}} {{.Config.Cmd}}'
